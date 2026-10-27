@@ -103,7 +103,8 @@ object Bg {
 
     // ---------- worlds ----------
     fun draw(g: Game, i: Int) {
-        when (i) { 0 -> city(g); 1 -> bazaar(g); 2 -> metro(g); 3 -> park(g); 4 -> tower(g); 5 -> skyCity(g); 6 -> samarkand(g); 7 -> bukhara(g); else -> khiva(g) }
+        when (i) { 0 -> city(g); 1 -> bazaar(g); 2 -> metro(g); 3 -> park(g); 4 -> tower(g); 5 -> skyCity(g); 6 -> samarkand(g); 7 -> bukhara(g); 8 -> khiva(g)
+            9 -> margilan(g); 10 -> rishtan(g); else -> aral(g) }
     }
 
     fun city(g: Game) {
@@ -357,6 +358,125 @@ object Bg {
         }
         // drifting sand grains
         for (i in 0 until 14) { val x = m(hash(i, 50) % W - f * (0.6f + (i % 3) * 0.3f), W.toFloat()); px("#f0d8a8", x, 120 + hash(i, 51) % 110, 2, 1) }
+    }
+
+    // ================= chapter 3 =================
+    private val IKAT = arrayOf("#d8373b", "#f4c430", "#2e9b6b", "#2457c5", "#7b3fa0", "#f5f0e6")
+
+    /** Margilan: Alay mountains, mulberry orchards, the silk factory and atlas drying in the wind. */
+    fun margilan(g: Game) {
+        val cx = g.camX; val f = g.frame
+        sky("marg", arrayOf("#79c3ec", "#a6daf2", "#d4eef8", "#f0f9fb"))
+        sun(146, 30, 8, "#fffbe0", "#fff2b0")
+        clouds(f, cx, 16, 4)
+        strip("marg:mtn", 360, 80, 96f, cx, 0.05f) {
+            G.tri("#a9bfd8", floatArrayOf(0f, 50f, 90f, 140f, 190f, 240f, 300f, 360f, 360f, 0f), floatArrayOf(60f, 12f, 40f, 6f, 34f, 14f, 44f, 30f, 80f, 80f))
+            for (p in arrayOf(50 to 12, 140 to 6, 240 to 14)) G.tri("#f4f8ff", floatArrayOf(p.first - 10f, p.first.toFloat(), p.first + 10f), floatArrayOf(p.second + 12f, p.second.toFloat(), p.second + 12f))
+            px("#bcd0e4", 0, 62, 360, 18)
+        }
+        strip("marg:factory", 400, 100, 104f, cx, 0.18f) {     // Yodgorlik silk factory and mulberry trees
+            for (k in 0 until 6) tree(k * 70 + 20, 100, 13, "#3f7f35")
+            px("#d9c4a0", 120, 40, 220, 60); px("#eadbbf", 121, 41, 218, 58); px("#b8a07a", 118, 36, 224, 5)
+            for (k in 0 until 9) { val wx = 128 + k * 24; px("#7a5a40", wx, 52, 12, 20); halfDisc("#7a5a40", wx + 6, 52, 6); px("#86c5ef", wx + 1, 53, 10, 18); halfDisc("#86c5ef", wx + 6, 53, 5); px("#7a5a40", wx + 6, 47, 1, 25) }
+            px("#2457c5", 200, 26, 64, 10); px("#f4c430", 202, 27, 60, 1); txt("YODG'ORLIK", 232, 28, "#ffffff", SM, 1, false)
+            px("#8b5a2b", 214, 78, 36, 22); px("#a8702a", 216, 80, 32, 20)
+        }
+        // atlas fabric drying on poles, swaying
+        val base = (130 - m(cx * 0.32f, 240f)).roundToInt()
+        for (r in -1..1) {
+            val rx = base + r * 240
+            if (rx > W + 10 || rx < -150) continue
+            px("#6b4a2a", rx, 128, 2, 62); px("#6b4a2a", rx + 120, 128, 2, 62); px("#4a3a2a", rx, 130, 122, 1)
+            for (k in 0 until 9) {
+                val fx0 = rx + 4 + k * 13
+                for (q in 0 until 22) {
+                    val sway = (sin(f / 22f + k * 0.7f + q / 7f) * q / 9f).roundToInt()
+                    val c = IKAT[((k * 2 + (q / 3 + (if ((q / 3) % 2 == 0) 0 else 1))) + (if (q % 3 == 0) 1 else 0)) % 6]
+                    px(c, fx0 + sway, 131 + q * 2, 10, 2)
+                    if (q % 4 == 2) px("#ffffff", fx0 + sway + 2 + (q / 4 % 2) * 4, 131 + q * 2, 2, 1)
+                }
+            }
+        }
+        strip("marg:near", 200, 40, 192f, cx, 0.55f) {
+            px("#c9b48a", 0, 30, 200, 10); px("#e2d1a8", 0, 30, 200, 2)
+            for (k in 0 until 10) { px("#8b6b4a", k * 20 + 2, 14, 3, 18); px("#a8835a", k * 20 + 2, 14, 3, 2) }
+            px("#8b6b4a", 0, 20, 200, 2)
+            for (k in 0 until 4) { circle("#3f8a33", k * 50 + 30, 26, 9); circle("#58a643", k * 50 + 28, 23, 6); for (q in 0 until 4) px("#4a1a3a", k * 50 + 24 + q * 3, 22 + q % 2 * 4, 1, 1) }  // mulberries
+        }
+    }
+
+    /** Rishtan: Fergana valley hills, potters' yards with plates on the walls and smoking xumdon kilns. */
+    fun rishtan(g: Game) {
+        val cx = g.camX; val f = g.frame
+        sky("rish", arrayOf("#f2a86a", "#f8c890", "#fbe0b8", "#fdf0dc"))
+        sun(36, 44, 11, "#fff3c8", "#ffd890")
+        clouds(f, cx, 20, 3, "#fff3e6", "#f4d9c0")
+        strip("rish:hills", 330, 70, 120f, cx, 0.07f) {
+            for (k in 0 until 4) { halfDisc("#b9c48a", k * 90 + 30, 70, 50); halfDisc("#c9d29a", k * 90 + 24, 70, 42) }
+            for (k in 0 until 11) poplar(k * 30 + 8, 70, 36, "#6a9a4a")
+        }
+        strip("rish:yards", 300, 110, 96f, cx, 0.22f) {
+            for (k in 0 until 2) {
+                val x = k * 150
+                px("#c98a5a", x + 6, 40, 120, 70); px("#d9a070", x + 7, 41, 118, 68); px("#b07a4a", x + 4, 36, 124, 5)
+                for (r in 0 until 2) for (q in 0 until 5) {     // lagan plates on the wall
+                    val pxx = x + 20 + q * 22; val py = 54 + r * 24
+                    circle("#1f5aa8", pxx, py, 8f); circle("#2fb3c9", pxx, py, 7f); circle("#f5f0e6", pxx, py, 5f); circle(if ((q + r) % 2 == 0) "#2fb3c9" else "#1f5aa8", pxx, py, 2.5f)
+                    px("#d8373b", pxx - 1, py - 1, 2, 2)
+                }
+                px("#8b5a2b", x + 50, 86, 26, 24); px("#a8702a", x + 52, 88, 22, 22)
+            }
+        }
+        // xumdon kilns with drifting smoke
+        val kb = (60 - m(cx * 0.4f, 200f)).roundToInt()
+        for (r in -1..1) {
+            val kx = kb + r * 200
+            if (kx < -60 || kx > W + 60) continue
+            halfDisc("#7a3a20", kx, 200, 26); halfDisc("#a8502e", kx - 1, 200, 24)
+            for (q in 0 until 5) px("#7a3a20", kx - 20 + q * 9, 186 + (q % 2) * 6, 6, 1)
+            px("#1c1410", kx - 6, 190, 12, 10); px(if (f % 20 < 10) "#f08a24" else "#ffd65a", kx - 4, 194, 8, 6)
+            px("#7a3a20", kx + 8, 166, 6, 12)
+            for (q in 0 until 4) { val t = (f + q * 30) % 120; G.alpha((1f - t / 120f) * 0.45f) { circle("#d8d0c8", kx + 11 + sin(t / 14f) * 4, 164 - t * 0.5f, 3 + t / 24f) } }
+            px("#8b5a2b", kx + 30, 176, 40, 3)                              // drying shelf with fresh bowls
+            for (q in 0 until 5) { px("#c0643a", kx + 32 + q * 8, 170, 6, 6); px("#e8a070", kx + 32 + q * 8, 170, 6, 1) }
+        }
+    }
+
+    /** The dried Aral sea: salt flats, rusted ships of Muynak, mirage shimmer and gulls. */
+    fun aral(g: Game) {
+        val cx = g.camX; val f = g.frame
+        sky("aral", arrayOf("#5a6fae", "#8a8fc0", "#d89a88", "#f2c49a", "#f8e2c0"))
+        sun(120, 118, 18, "#ffe6b0", "#ffc890")
+        clouds(f, cx, 30, 3, "#f8d8c8", "#d8a0a0")
+        strip("aral:far", 360, 40, 130f, cx, 0.05f) {
+            px("#e6c8a6", 0, 20, 360, 20); px("#f2dcc0", 0, 20, 360, 2)
+            for (k in 0 until 6) { val x = k * 60 + 10; px("#b89a7a", x, 14, 30, 6); px("#b89a7a", x + 6, 10, 10, 4) }   // distant hull silhouettes
+        }
+        // mirage shimmer band
+        for (k in 0 until 8) { val y = 152 + k * 2; val o = (sin(f / 13f + k) * 3).roundToInt(); G.alpha(0.25f) { px("#fff6e0", o + (k * 37 % 50), y, 60 + k * 10, 1); px("#fff6e0", o + 110 + (k * 23 % 40), y, 50, 1) } }
+        strip("aral:ships", 420, 90, 110f, cx, 0.2f) { ship(30, 80, 120, -0.06f); ship(220, 84, 90, 0.08f); ship(350, 82, 60, 0f) }
+        strip("aral:near", 240, 50, 186f, cx, 0.5f) {
+            px("#e8dfca", 0, 40, 240, 10); px("#ffffff", 0, 40, 240, 1)
+            for (k in 0 until 5) { val x = k * 48 + 14                       // saxaul shrubs
+                px("#6b5a3a", x, 26, 2, 16); px("#6b5a3a", x - 4, 30, 5, 1); px("#6b5a3a", x + 2, 28, 6, 1)
+                for (q in 0 until 7) px(if (q % 2 == 0) "#8a9a5a" else "#a8b46a", x - 6 + hash(k, q) % 14, 20 + hash(q, k) % 10, 3, 2) }
+            for (k in 0 until 6) px("#f2d6c4", hash(k, 4) % 236, 44 + k % 3, 2, 1)
+        }
+        // gulls
+        for (i in 0 until 3) { val x = m(hash(i, 21) % 200 - f * 0.5f, W + 40f) - 20; val y = 60 + hash(i, 22) % 30 + sin(f / 25f + i) * 4; val up = ((f / 9 + i) % 2) == 0
+            px("#ffffff", x, y, 2, 1); px("#ffffff", x - 3, y + (if (up) -1 else 1), 3, 1); px("#ffffff", x + 2, y + (if (up) -1 else 1), 3, 1) }
+    }
+
+    /** A rusted fishing boat stranded on the sand. */
+    private fun ship(x: Int, base: Int, w: Int, tilt: Float) {
+        val h = w / 4
+        val xs = floatArrayOf(x.toFloat(), x + w.toFloat(), x + w - 10f, x + 8f); val ys = floatArrayOf(base - h - tilt * w, base - h + tilt * w, base.toFloat(), base.toFloat())
+        G.tri("#5a2a14", xs, ys)
+        G.tri("#8a4a2a", floatArrayOf(x + 2f, x + w - 2f, x + w - 11f, x + 9f), floatArrayOf(ys[0] + 2, ys[1] + 2, base - 2f, base - 2f))
+        for (k in 0 until w / 14) px("#c0703a", x + 8 + k * 14, (base - h * 0.6f).roundToInt(), 6, 2)
+        px("#5a2a14", x + w / 3, base - h - 16, 18, 14); px("#7a3a1e", x + w / 3 + 2, base - h - 14, 14, 12); px("#86c5ef", x + w / 3 + 4, base - h - 12, 4, 3)
+        px("#5a2a14", x + w * 2 / 3, base - h - 30, 2, 30)
+        for (k in 0 until 5) px("#d98a4a", x + hash(k, w) % w, base - hash(k, x) % h - 2, 2, 1)
     }
 
     @Suppress("unused") fun label(s: String, x: Float, y: Float) = txt(s, x, y, "#f4c430", SM)

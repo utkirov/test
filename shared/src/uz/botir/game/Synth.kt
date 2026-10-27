@@ -12,6 +12,7 @@ import kotlin.math.sin
 object Music {
     const val TITLE = 0; const val MAHALLA = 1; const val CHORSU = 2; const val METRO = 3; const val ANHOR = 4
     const val TOWER = 5; const val BOSS = 6; const val SAMARKAND = 7; const val BUKHARA = 8; const val KHIVA = 9; const val ENDLESS = 10
+    const val FERGANA = 11; const val RISHTAN = 12; const val ARAL = 13
     var enabled = true
         set(v) { field = v; try { Plat.audio.setMusicEnabled(v) } catch (_: Throwable) { } }
     fun play(i: Int) { try { Plat.audio.music(i) } catch (_: Throwable) { } }
@@ -48,7 +49,16 @@ object Synth {
         Song(6f, "A4 C5 E5 A5 G#5 A5 B5 A5 G#5 E5 D5 C5 B4 C5 D5 E5 F5 E5 D5 C5 B4 A4 G#4 B4 A4 - - . A5 - - .",
             "A2 . E3 . A2 . E3 . D3 . A2 . E3 . E2 .", "DtTtDtTt"),
         Song(6f, "C5 E5 G5 E5 C6 - G5 E5 F5 A5 C6 A5 F5 - . . G5 B5 D6 B5 G5 - F5 D5 E5 G5 C6 - - - . .",
-            "C3 . G2 . C3 . G2 . F2 . C3 . F2 . C3 . G2 . D3 . G2 . D3 . C3 . G2 . C3 . . .", "D.t.DDt.")
+            "C3 . G2 . C3 . G2 . F2 . C3 . F2 . C3 . G2 . D3 . G2 . D3 . C3 . G2 . C3 . . .", "D.t.DDt."),
+        // Fergana: bright pentatonic dance in 6/8
+        Song(5.5f, "C5 D5 E5 G5 . E5 D5 C5 . A4 C5 D5 E5 - - . G5 A5 G5 E5 D5 E5 C5 . D5 E5 D5 C5 A4 - - . E5 G5 A5 C6 - A5 G5 E5 . D5 E5 G5 E5 D5 C5 D5 . C5 - - .",
+            "C3 . G2 . A2 . E2 . F2 . C3 . G2 . G2 .", "D.tD.t"),
+        // Rishtan: dorian, steady potter's-wheel groove
+        Song(4.8f, "D5 - F5 G5 A5 - G5 F5 E5 - D5 - C5 D5 E5 - F5 - E5 D5 C5 - A4 - D5 - - - . . . . A5 - C6 - B5 A5 G5 - A5 G5 F5 - E5 - D5 - F5 E5 D5 C5 D5 - - - . . . .",
+            "D3 . A2 . C3 . G2 . Bb2 . F2 . A2 . A2 .", "D.t.DtT."),
+        // Aral: wide, wistful minor
+        Song(3.4f, "A4 - - C5 E5 - - D5 C5 - B4 - A4 - - - E5 - - F5 E5 - D5 - C5 - D5 - E5 - - - A5 - - G5 F5 - E5 - D5 - C5 - B4 - - - C5 - B4 - A4 - - - . . . .",
+            "A2 - - - F2 - - - C3 - - - E2 - - -", "D...t.T.")
     )
 
     val songCount get() = SONGS.size

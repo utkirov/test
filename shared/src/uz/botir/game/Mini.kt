@@ -22,9 +22,10 @@ class Mini(val k: Char, var x: Float, var y: Float, val w: Float, val h: Float, 
 private val MINI_NAMES = mapOf(
     'G' to arrayOf("ГУСЬ-КОРОЛЬ", "G'OZ-QIROL"), 'A' to arrayOf("КОРОЛЬ НОСИЛЬЩИКОВ", "ARAVAKASH-QIROL"),
     'K' to arrayOf("КОНТРОЛЁР", "NAZORATCHI"), 'V' to arrayOf("ВЕЛО-ГЛАВАРЬ", "VELO-BOSHLIQ"),
-    'P' to arrayOf("КОРОЛЬ ГОЛУБЕЙ", "KAPTAR-QIROL"), 'S' to arrayOf("ШЕР С МЕДРЕСЕ", "SHERDOR SHERI"), 'T' to arrayOf("ЗЛОЙ ВЕРБЛЮД", "JAHLDOR TUYA"))
+    'P' to arrayOf("КОРОЛЬ ГОЛУБЕЙ", "KAPTAR-QIROL"), 'S' to arrayOf("ШЕР С МЕДРЕСЕ", "SHERDOR SHERI"), 'T' to arrayOf("ЗЛОЙ ВЕРБЛЮД", "JAHLDOR TUYA"),
+    'W' to arrayOf("ШЕЛКОПРЯД-ВЕЛИКАН", "ALP IPAK QURTI"), 'L' to arrayOf("ГЛИНЯНЫЙ ГОЛЕМ", "LOY DEV"))
 
-private val MINI_SIZE = mapOf('G' to (26f to 20f), 'A' to (34f to 22f), 'K' to (14f to 24f), 'V' to (26f to 20f), 'P' to (26f to 14f), 'S' to (30f to 18f), 'T' to (30f to 28f))
+private val MINI_SIZE = mapOf('G' to (26f to 20f), 'A' to (34f to 22f), 'K' to (14f to 24f), 'V' to (26f to 20f), 'P' to (26f to 14f), 'S' to (30f to 18f), 'T' to (30f to 28f), 'W' to (30f to 14f), 'L' to (18f to 26f))
 
 fun Game.spawnMini(d: MiniDef) {
     val (w, h) = MINI_SIZE[d.k] ?: (24f to 20f)
@@ -39,6 +40,8 @@ fun Game.spawnMini(d: MiniDef) {
         'V' -> L("Вело-главарь: «Кто быстрее — тот и прав!»", "Velo-boshliq: «Kim tez bo'lsa — o'sha haq!»")
         'P' -> L("Король голубей: «Курлык! Это моя башня!»", "Kaptar-qirol: «Ku-ku! Bu mening minoram!»")
         'S' -> L("Шер сошёл с медресе Шердор! Р-р-р!", "Sher Sherdor madrasasidan tushdi! R-r-r!")
+        'W' -> L("Шелкопряд-великан: «Я съел все листья туты! Теперь твоя очередь!»", "Alp ipak qurti: «Barcha tut barglarini yedim! Endi navbat senga!»")
+        'L' -> L("Глиняный голем: «Ты разбил мой кувшин? Теперь держись!»", "Loy dev: «Ko'zamni sindirdingmi? Endi ushla!»")
         else -> L("Верблюд: «Пфф! Сейчас как плюну!»", "Tuya: «Pff! Hozir tupuraman!»")
     }
     toast(line)
@@ -61,7 +64,7 @@ fun Game.updMini() {
     val pcx = p.x + p.w / 2; val mcx = m.x + m.w / 2
     val ground = m.k != 'P'
     when (m.k) {
-        'G', 'A', 'V' -> {
+        'G', 'A', 'V', 'W' -> {
             val walk = if (m.k == 'V') 0f else 0.6f
             when (m.st) {
                 0 -> { // patrol
@@ -71,6 +74,7 @@ fun Game.updMini() {
                     if (m.x + m.w > m.x1 - 4) { m.x = m.x1 - 4 - m.w; if (m.k == 'V') { m.st = 3; m.stT = 40; Sfx.fx("bell") }; m.dir = -1 }
                     if (m.k == 'V' && m.t % 170 == 0 && m.vy == 0f) m.vy = -5.5f
                     if (m.k != 'V' && m.t % (120 - (3 - m.hp) * 20) == 0) { m.st = 1; m.stT = 30; m.dir = if (pcx > mcx) 1 else -1; Sfx.fx(if (m.k == 'G') "honk" else "roar") }
+                    if (m.k == 'W' && m.t % 130 == 65) for (s in -1..1 step 2) shots.add(Shot(mcx, m.y + 2, s * 1.4f, -4.5f, 'k'))
                     if (m.k == 'A' && m.t % 150 == 75) shots.add(Shot(mcx, m.gy - 6, (if (pcx > mcx) 1 else -1) * (1.6f + (3 - m.hp) * 0.3f), 0f, 'm'))
                 }
                 1 -> { m.stT--; if (m.stT <= 0) { m.st = 2 } }       // telegraph (drawn shaking)
@@ -82,12 +86,13 @@ fun Game.updMini() {
                 3 -> { m.stT--; if (m.stT <= 0) { m.st = 0; m.dir = if (pcx > mcx) 1 else -1 } }   // stunned / resting
             }
         }
-        'K' -> {
-            m.x += m.dir * 0.8f
+        'K', 'L' -> {
+            m.x += m.dir * (if (m.k == 'L') 0.6f else 0.8f)
             if (m.x < m.x0 + 4) { m.x = m.x0 + 4; m.dir = 1 }; if (m.x + m.w > m.x1 - 4) { m.x = m.x1 - 4 - m.w; m.dir = -1 }
             if (m.t % 140 == 0 && m.vy == 0f) m.vy = -6f
             val per = 90 - (3 - m.hp) * 18
-            if (m.t % per == 0) { val dx = pcx - mcx; shots.add(Shot(mcx, m.y + 4, (dx / 45f).coerceIn(-3f, 3f), -4.2f, 'j')); Sfx.fx("throw") }
+            if (m.t % per == 0) { val dx = pcx - mcx; shots.add(Shot(mcx, m.y + 4, (dx / 45f).coerceIn(-3f, 3f), -4.2f, if (m.k == 'L') 'r' else 'j')); Sfx.fx("throw")
+                if (m.k == 'L' && m.hp < 3) shots.add(Shot(mcx, m.y + 4, (dx / 70f).coerceIn(-3f, 3f), -5.4f, 'r')) }
         }
         'S' -> when (m.st) {
             0 -> { m.x += m.dir * 0.9f; if (m.x < m.x0 + 4) { m.x = m.x0 + 4; m.dir = 1 }; if (m.x + m.w > m.x1 - 4) { m.x = m.x1 - 4 - m.w; m.dir = -1 }
@@ -139,39 +144,9 @@ fun Game.drawMini() {
     if (m.dead > 0) { c.translate(0f, m.h * 0.6f); c.scale(1f, 0.4f) }
     val face = if (m.k == 'P') (if (m.st == 2) sign(m.tx - (m.x + m.w / 2)).toInt().let { if (it == 0) 1 else it } else 1) else m.dir
     if (face < 0) { c.translate(m.w, 0f); c.scale(-1f, 1f) }
-    val f = (m.t / 7) % 2
-    val parts: List<Part> = when (m.k) {
-        'G' -> listOf(P(9, 15, 2, 5 - f, "#f08a24"), P(15, 15, 2, 4 + f, "#f08a24"), P(2, 6, 18, 10, "#f2f2f2") { px("#cfcfd6", 5, 8, 9, 3); px("#cfcfd6", 2, 14, 18, 1) },
-            P(17, 0, 3, 9, "#f2f2f2"), P(20, 1, 6, 3, "#f08a24") { px("#c25e10", 20, 3, 6, 1) },
-            P(16, -3, 5, 4, "#f2f2f2") { px("#000000", 19, -2); px("#000000", 17, -3, 3, 1) }, P(15, -7, 7, 3, "#f4c430") { px("#e24b4a", 17, -6, 1, 1); px("#2457c5", 19, -6, 1, 1) })
-        'A' -> listOf(P(0, 10, 22, 9, "#8b5a2b") { px("#6b3f1f", 0, 15, 22, 1); for (k in 0 until 3) px("#e9c94a", 2 + k * 7, 6, 6, 5) },
-            P(2, 18, 5, 5, "#222222"), P(15, 18, 5, 5, "#222222"),
-            P(24, 15, 3, 7, "#3a2c24"), P(28, 15 - f, 3, 7, "#3a2c24"), P(23, 6, 9, 10, "#2457c5") { px("#f5f0e6", 23, 10, 9, 1) },
-            P(24, 0, 7, 7, "#e8ad7e") { px("#000000", 29, 2); px("#1c1410", 26, 5, 4, 1) }, P(23, -2, 9, 3, "#15151c"), P(20, 9, 4, 2, "#e8ad7e"))
-        'K' -> listOf(P(3, 16, 3, 8, "#1f2430"), P(8, 16 - f, 3, 8, "#1f2430"), P(2, 7, 10, 10, "#2e6fd8") { px("#f4c430", 2, 11, 10, 1); px("#f4c430", 9, 8, 2, 2) },
-            P(3, 1, 8, 7, "#e8ad7e") { px("#000000", 9, 3); px("#8a3324", 6, 6, 3, 1) }, P(2, -2, 10, 4, "#2e6fd8") { px("#f4c430", 6, -2, 2, 1) }, P(11, 9, 3, 2, "#e8ad7e"))
-        'V' -> listOf(P(0, 13, 7, 7, "#222222") { px("#9aa1ab", 2, 15, 3, 3) }, P(18, 13, 7, 7, "#222222") { px("#9aa1ab", 20, 15, 3, 3) },
-            P(3, 12, 19, 2, "#d8373b"), P(18, 5, 2, 8, "#9aa1ab"), P(16, 4, 6, 2, "#2b2b33"),
-            P(7, 8 - f, 3, 6, "#3561a8"), P(11, 8 + f, 3, 6, "#3561a8"), P(6, 0, 10, 9, "#111111") { px("#f4c430", 6, 4, 10, 1) },
-            P(9, -7, 8, 7, "#e8ad7e") { px("#000000", 14, -5, 3, 1) }, P(8, -9, 10, 3, "#d8373b"))
-        'P' -> listOf(P(0, if (f == 1) 0 else 6, 10, 3, "#a7b0c2"), P(16, if (f == 1) 0 else 6, 10, 3, "#a7b0c2"),
-            P(4, 4, 18, 8, "#8a93a6") { px("#5f6b80", 6, 6, 12, 1); px("#5f6b80", 6, 9, 10, 1) },
-            P(17, 1, 7, 6, "#6b7690") { px("#ff7a00", 21, 3); px("#2fb39a", 17, 5, 6, 1) }, P(24, 3, 3, 2, "#e8b25a"),
-            P(17, -3, 6, 3, "#f4c430") { px("#e24b4a", 19, -2, 1, 1) }, P(6, 12, 2, 2, "#e8b25a"), P(14, 12, 2, 2, "#e8b25a"))
-        'S' -> { val cr = if (m.st == 1) 3 else 0
-            listOf(P(3, 13 + cr, 3, 5 - cr, "#f08a24"), P(9, 13 + cr - f, 3, 5 - cr, "#f08a24"), P(18, 13 + cr, 3, 5 - cr, "#f08a24"), P(24, 13 + cr + f, 3, 5 - cr, "#f08a24"),
-                P(0, 4 + cr, 4, 2, "#f08a24"), P(2, 5 + cr, 24, 9, "#f08a24") { for (k in 0 until 5) px("#1c1410", 6 + k * 4, 6 + cr, 1, 6); px("#f5f0e6", 4, 11 + cr, 20, 2) },
-                P(22, 0 + cr, 9, 9, "#f08a24") { px("#1c1410", 23, 1 + cr, 1, 3); px("#000000", 28, 3 + cr, 1, 1); px("#f5f0e6", 26, 6 + cr, 5, 2) },
-                P(25, -3 + cr, 6, 4, "#f4c430") { px("#fff6c8", 27, -2 + cr, 2, 2) })   // the sun face from the madrasa facade
-        }
-        else -> listOf( // 'T' camel
-            P(4, 18, 3, 10 - f, "#c08a4a"), P(10, 18, 3, 10 + f - 1, "#c08a4a"), P(18, 18, 3, 10 - f, "#c08a4a"), P(23, 18, 3, 9 + f, "#c08a4a"),
-            P(1, 8, 26, 11, "#d9a35a") { px("#b8833a", 1, 16, 26, 3); px("#d8373b", 6, 8, 14, 3); px("#f4c430", 6, 11, 14, 1) },
-            P(8, 2, 10, 7, "#d9a35a"), P(25, 0, 4, 12, "#d9a35a"), P(25, -5, 9, 6, "#d9a35a") { px("#000000", 31, -4, 1, 1); px("#8a5422", 32, -1, 2, 1) },
-            P(26, -7, 2, 3, "#c08a4a"))
-    }
+    val parts = Foes.mini(m.k, m.t, m.st)
     G.drawParts(parts, 0f)
-    if (m.st == 3 && m.k != 'P' && m.k != 'K') for (i in 0 until 3) { val a = frame / 6f + i * 2.1f; px("#f4c430", m.w / 2 + sin(a) * 8, -6 + kotlin.math.cos(a) * 2, 2, 2) }
+    if (m.st == 3 && m.k != 'P' && m.k != 'K' && m.k != 'L') for (i in 0 until 3) { val a = frame / 6f + i * 2.1f; px("#f4c430", m.w / 2 + sin(a) * 8, -6 + kotlin.math.cos(a) * 2, 2, 2) }
     c.restore()
     val nm = MINI_NAMES[m.k] ?: arrayOf("БОСС", "BOSS")
     for (i in 0 until 3) G.spr(Spr.HRT, W / 2 - 14 + i * 10, 22, Spr.pal('R' to if (i < m.hp) "#7b3fa0" else "#4a4a5a"))

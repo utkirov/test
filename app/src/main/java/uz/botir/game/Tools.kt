@@ -69,13 +69,13 @@ object Tools {
                     g.goTitle(); AndroidPlatform.gfx.cv = c; c.scale(500f / 270f, 500f / 270f)
                     for (k in 0 until 4) { c.save(); c.translate(k * 180f, 0f); g.camX = k * 180f; Bg.city(g); c.restore() }
                     G.px("#4f9a3a", 0, 214, 560, 6); G.px("#7cc44a", 0, 214, 560, 2); G.px("#b9773d", 0, 220, 560, 50)
-                    for (k in 0 until 6) G.spr(Spr.NON, 40 + k * 16, 150 - (k % 2) * 8, Spr.PAL)
+                    for (k in 0 until 6) Spr.item("non", 40f + k * 16, 150f - (k % 2) * 8)
                     c.save(); c.translate(60f, 136f); c.scale(2.5f, 2.5f); Hero.draw("jump", 0, Skins.ALL[0], false); c.restore()
                     G.px("#140c08", 248, 38, 294, 124); G.px("#1d2b53", 250, 40, 290, 120); G.px("#f4c430", 250, 40, 290, 3)
                     G.txt("BOTIR", 395f, 56f, "#f4c430", 32f, 1)
                     G.txt("O'zbekiston sarguzashtlari", 395f, 102f, "#fff1e8", 8f, 1)
                     G.txt("Приключения в Узбекистане", 395f, 120f, "#a8b3d9", 8f, 1)
-                    c.save(); c.translate(360f, 132f); c.scale(2f, 2f); G.spr(Spr.QOZ, 0f, 0f, Spr.pal('O' to "#f0c27a")); G.spr(Spr.KAF, 18f, 2f, Spr.PAL); c.restore()
+                    c.save(); c.translate(360f, 132f); c.scale(2f, 2f); Spr.item("qozon", 0f, 0f); Spr.item("kafgir", 20f, 2f); Spr.item("lagan", 40f, 0f); c.restore()
                 }
                 save(fg, File(dir, "feature_1024x500.png"))
             } catch (t: Throwable) { Log.e(TAG, "feature", t) }

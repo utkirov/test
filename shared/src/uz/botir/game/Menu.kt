@@ -26,8 +26,8 @@ object Menu {
             "levels" -> {
                 g.levels.forEachIndexed { i, l ->
                     val locked = i > g.unlock
-                    val col = if (i < 6) i % 3 else i - 6; val row = if (i < 6) i / 3 else 2
-                    val x = 6 + col * 57; val y = if (row < 2) 30 + row * 44 else 140
+                    val col = if (i < 6) i % 3 else (i - 6) % 3; val row = if (i < 6) i / 3 else if (i < 9) 2 else 3
+                    val x = 6 + col * 57; val y = when (row) { 0 -> 24; 1 -> 66; 2 -> 120; else -> 176 }
                     btn(g, x, y, 54, 38, if (locked) "?" else L(l.sh[0], l.sh[1]), if (locked) L("закрыто", "yopiq") else "", if (locked) 2 else 4, i) { if (!locked) g.goIntro(i) else say(g, L("Сначала пройди прошлый уровень", "Avval oldingi bosqichni o'ting")) }
                 }
                 btn(g, 40, 238, 100, 18, L("НАЗАД", "ORQAGA"), style = 1) { g.show("title") }
@@ -153,8 +153,9 @@ object Menu {
         when (who) {
             'D' -> Spr.person(0f, 0f, "#2f7d4a", "#f2f2f2", scarf = true, beard = true, arm = if (active) 6 else 0)
             'N' -> Spr.person(0f, 0f, "#7b3fa0", "#f2f2f2", scarf = true, beard = true, arm = if (active) 6 else 0)
-            'O' -> { Spr.person(0f, 0f, "#3a2f5a", "#1c1410", glasses = true, arm = if (active) 6 else 0); px("#f4c430", 3, 8, 4, 1) }
-            'Z' -> { Spr.person(0f, 0f, "#c9a227", "#1c1410", beard = true, arm = if (active) 6 else 0); px("#f4c430", 2, 10, 6, 1) }
+            'O' -> Spr.person(0f, 0f, "#5b3a8a", "#1c1410", glasses = true, arm = if (active) 6 else 0)
+            'Z' -> { Spr.person(0f, 0f, "#2e7d4a", "#1c1410", beard = true, arm = if (active) 6 else 0) }
+            'X' -> Spr.person(0f, 0f, "#1f5aa8", "#f5f5f5", arm = if (active) 6 else 0)
         }
         G.c.restore()
     }
@@ -166,7 +167,7 @@ object Menu {
         val other = cut.lines.firstOrNull { it.who != 'B' }?.who ?: 'D'
         heroAt(g, g.skin(), 34f, 137f + (if (line.who == 'B' && g.frame % 20 < 10) -1 else 0), 1f, if (line.who == 'B') "jump" else "idle")
         speaker(g, other, 118f, 132f, line.who != 'B')
-        val name = when (line.who) { 'B' -> g.L("Ботир", "Botir"); 'D' -> g.L("Бобо", "Bobo"); 'N' -> g.L("Насреддин", "Nasriddin"); 'O' -> g.L("Жадина-ака", "Ochko'z aka"); else -> g.L("Зикна-ака", "Ziqna aka") }
+        val name = when (line.who) { 'B' -> g.L("Ботир", "Botir"); 'D' -> g.L("Бобо", "Bobo"); 'N' -> g.L("Насреддин", "Nasriddin"); 'O' -> g.L("Жадина-ака", "Ochko'z aka"); 'X' -> g.L("Хасис-ака", "Xasis aka"); else -> g.L("Зикна-ака", "Ziqna aka") }
         px(OUT, 5, 205, 170, 60); px("#1d2b53", 6, 206, 168, 58); px("#f4c430", 6, 206, 168, 2)
         txt(name, 12f, 211f, "#f4c430", SM)
         var y = 223f
@@ -185,15 +186,16 @@ object Menu {
                 Season.titleDecor(g.season, g.frame)
                 txt("BOTIR", W / 2f, 18f, "#f4c430", 16f, 1)
                 txt(L("Приключения в Узбекистане", "O'zbekiston sarguzashtlari"), W / 2f, 40f, "#fff1e8", SM, 1)
-                G.spr(Spr.NON, 40f, 56f, Spr.PAL); txt("${g.wallet}", 54f, 58f, "#fff1e8", SM)
+                Spr.item("non", 39f, 55f); txt("${g.wallet}", 54f, 58f, "#fff1e8", SM)
                 g.star(98f, 58f); txt("${g.allStars()}/${g.levels.size * 3}", 106f, 58f, "#f4c430", SM)
                 txt(L("Пасхалки", "Sirlar") + " ${g.allEggs()}/${g.eggTotals.sum()}", W / 2f, 72f, "#a8b3d9", SM, 1)
                 heroAt(g, g.skin(), 140f, 228f, 1f, if ((g.frame / 8) % 2 == 0) "run0" else "run1")
                 Season.banner(g.season, g, 84f)
             }
             "levels" -> {
-                txt(L("Глава 1: Ташкент", "1-bob: Toshkent"), W / 2f, 16f, "#f4c430", SM, 1)
-                txt(L("Глава 2: Шёлковый путь", "2-bob: Ipak yo'li"), W / 2f, 126f, "#f4c430", SM, 1)
+                txt(L("Глава 1: Ташкент", "1-bob: Toshkent"), W / 2f, 12f, "#f4c430", SM, 1)
+                txt(L("Глава 2: Шёлковый путь", "2-bob: Ipak yo'li"), W / 2f, 108f, "#f4c430", SM, 1)
+                txt(L("Глава 3: Долина и Арал", "3-bob: Vodiy va Orol"), W / 2f, 164f, "#f4c430", SM, 1)
             }
             "intro" -> {
                 val l = g.levels[g.introI]
@@ -222,12 +224,12 @@ object Menu {
             }
             "credits" -> {
                 txt(L("ПОБЕДА!", "G'ALABA!"), W / 2f, 16f, "#f4c430", 16f, 1)
-                val y = para(L("Казан и золотой кафгир вернулись домой. Весь Узбекистан ест плов в честь Ботира!", "Qozon ham, oltin kapgir ham uyga qaytdi. Butun O'zbekiston Botir sharafiga osh yemoqda!"), 44f, "#fff1e8")
+                val y = para(L("Казан, золотой кафгир и риштанский ляган вернулись домой. Весь Узбекистан ест плов в честь Ботира!", "Qozon, oltin kapgir va Rishton lagani uyga qaytdi. Butun O'zbekiston Botir sharafiga osh yemoqda!"), 44f, "#fff1e8")
                 txt(L("Звёзды", "Yulduzlar") + " ${g.allStars()}/${g.levels.size * 3}", W / 2f, y + 8, "#f4c430", SM, 1)
                 txt(L("Пасхалки", "Sirlar") + " ${g.allEggs()}/${g.eggTotals.sum()}", W / 2f, y + 18, "#f4c430", SM, 1)
                 para(L("Спасибо, что играл! Найди все пасхалки и собери все звёзды.", "O'ynaganingiz uchun rahmat! Barcha sirlarni toping va barcha yulduzlarni yig'ing."), y + 34)
                 heroAt(g, g.skin(), 60f, 190f, 1f, if (g.frame % 30 < 15) "jump" else "idle")
-                G.spr(Spr.QOZ, 92f, 210f, Spr.pal('O' to "#f0c27a")); G.spr(Spr.KAF, 112f, 214f, Spr.PAL)
+                Spr.item("qozon", 88f, 204f); Spr.item("kafgir", 110f, 208f); Spr.item("lagan", 132f, 205f)
             }
             "endover" -> {
                 val m = ((g.pl.x - g.runStart) / T).toInt().coerceAtLeast(0)
@@ -235,12 +237,12 @@ object Menu {
                 txt("${m}m", W / 2f, 60f, "#fff1e8", 16f, 1)
                 if (g.newBest && g.frame % 30 < 20) txt(L("НОВЫЙ РЕКОРД!", "YANGI REKORD!"), W / 2f, 86f, "#f4c430", BIG, 1)
                 txt(L("Рекорд", "Rekord") + ": ${g.best}m", W / 2f, 104f, "#a8b3d9", SM, 1)
-                G.spr(Spr.NON, 70f, 122f, Spr.PAL); txt("+${g.lastEarned}", 84f, 124f, "#fff1e8", SM)
+                Spr.item("non", 69f, 121f); txt("+${g.lastEarned}", 84f, 124f, "#fff1e8", SM)
                 txt(L("Всего нонов", "Jami nonlar") + ": ${g.wallet}", W / 2f, 142f, "#a8b3d9", SM, 1)
             }
             "shop" -> {
                 txt(L("Дом деда", "Bobo uyi"), W / 2f, 6f, "#f4c430", BIG, 1)
-                G.spr(Spr.NON, 66f, 18f, Spr.PAL); txt("${g.wallet}", 80f, 20f, "#fff1e8", SM)
+                Spr.item("non", 65f, 17f); txt("${g.wallet}", 80f, 20f, "#fff1e8", SM)
             }
             "settings" -> txt(L("Настройки", "Sozlamalar"), W / 2f, 12f, "#f4c430", BIG, 1)
         }
@@ -268,7 +270,7 @@ object Menu {
                     val nm = G.wrap(g.L(s.n[0], s.n[1]), 50f, SM)
                     nm.take(2).forEachIndexed { i, l -> txt(l, b.x + 28, b.y + 8 + i * 9, "#fff1e8", SM) }
                     val st = when { sel -> g.L("надето", "kiyilgan"); g.skinAvailable(s) -> g.L("надеть", "kiyish"); s.season != 0 -> Season.name(s.season, g); else -> "${s.price}" }
-                    if (!g.skinAvailable(s) && s.season == 0) G.spr(Spr.NON, b.x + 28, b.y + 38, Spr.PAL)
+                    if (!g.skinAvailable(s) && s.season == 0) Spr.item("non", b.x + 27, b.y + 37)
                     txt(st, b.x + (if (!g.skinAvailable(s) && s.season == 0) 41 else 28), b.y + 40, if (sel) "#f4c430" else "#a8b3d9", SM)
                 }
                 6 -> { // upgrade row
@@ -276,7 +278,7 @@ object Menu {
                     txt(g.L(u.n[0], u.n[1]), b.x + 6, b.y + 6, "#fff1e8", SM)
                     txt(g.L(u.d[0], u.d[1]), b.x + 6, b.y + 17, "#a8b3d9", SM)
                     if (has) txt(g.L("куплено", "olingan"), b.x + 6, b.y + 28, "#f4c430", SM)
-                    else { G.spr(Spr.NON, b.x + 6, b.y + 27, Spr.PAL); txt("${u.price}", b.x + 20, b.y + 29, "#f4c430", SM) }
+                    else { Spr.item("non", b.x + 5, b.y + 26); txt("${u.price}", b.x + 20, b.y + 29, "#f4c430", SM) }
                 }
                 7 -> { txt(b.label, b.x + 6, b.y + (b.h - SM) / 2, "#fff1e8", SM); txt(b.sub, b.x + b.w - 6, b.y + (b.h - SM) / 2, "#f4c430", SM, 2) }
                 else -> {

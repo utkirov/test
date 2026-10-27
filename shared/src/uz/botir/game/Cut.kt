@@ -46,6 +46,21 @@ object Cuts {
         "end2" to Cut(8, listOf(
             l('Z', "Ладно-ладно... Забирай свой кафгир.", "Mayli-mayli... Kapgiringni olaver."),
             l('D', "Ботир, весь Узбекистан гордится тобой!", "Botir, butun O'zbekiston sen bilan faxrlanadi!"),
-            l('B', "А теперь — плов! Самый вкусный в мире.", "Endi esa — osh! Dunyodagi eng mazali osh.")))
+            l('B', "А теперь — плов! Самый вкусный в мире.", "Endi esa — osh! Dunyodagi eng mazali osh."))),
+        "c10" to Cut(9, listOf(
+            l('D', "Ботир! Плов готов, а лагана нет! Риштанский ляган моего деда пропал!", "Botir! Osh tayyor, lagan esa yo'q! Bobomdan qolgan Rishton lagani yo'qoldi!"),
+            l('X', "Ха! Я — Хасис-ака, младший брат. Ляган теперь мой, и я никому его не одолжу!", "Ha! Men — Xasis aka, kenja uka. Lagan endi meniki va uni hech kimga bermayman!"),
+            l('B', "Опять эти братья! За ним — в Ферганскую долину!", "Yana shu aka-ukalar! Ortidan — Farg'ona vodiysiga!"))),
+        "c11" to Cut(10, listOf(
+            l('X', "В Риштане наделаю тысячу копий и продам как оригинал!", "Rishtonda mingta nusxa yasab, asl deb sotaman!"),
+            l('B', "Настоящий риштанский ляган не подделаешь, Хасис-ака!", "Haqiqiy Rishton laganini soxtalashtirib bo'lmaydi, Xasis aka!"))),
+        "c12" to Cut(11, listOf(
+            l('X', "Я уплыву на корабле! ...Ой. А где море?", "Kemada suzib ketaman! ...Voy. Dengiz qani?"),
+            l('B', "Арал высох, Хасис-ака. Пустыня тебя не спрячет!", "Orol qurigan, Xasis aka. Cho'l seni yashira olmaydi!"))),
+        "end3" to Cut(11, listOf(
+            l('X', "Сдаюсь... Забирай свой ляган.", "Taslim... Laganingni olaver."),
+            l('D', "Казан, кафгир и ляган снова дома! Зовите всех, даже трёх братьев!", "Qozon, kapgir va lagan yana uyda! Hammani chaqiring, hatto uch aka-ukani ham!"),
+            l('X', "Правда? И мне тарелку плова?", "Rostdanmi? Menga ham bir likopcha oshmi?"),
+            l('B', "Конечно! Плов на одном лагане — для всех.", "Albatta! Bir lagandagi osh — hamma uchun.")))
     )
 }

@@ -305,7 +305,7 @@ object WebHost {
         // Telegram back button mirrors the in-game back action
         val wantBack = game.state != "title"
         if (wantBack != lastBack) { lastBack = wantBack; try { if (wantBack) tg?.BackButton?.show() else tg?.BackButton?.hide() } catch (e: dynamic) { } }
-        if (galleryPage >= 0) Gallery.draw(game, game.frame, galleryPage) else game.render()
+        if (galleryPage >= 0) { Spr.tick = game.frame; Gallery.draw(game, game.frame, galleryPage) } else game.render()
         ctx.setTransform(1, 0, 0, 1, 0, 0)
         ctx.fillStyle = "#0f1631"; ctx.fillRect(0, 0, cw, ch)
         ctx.imageSmoothingEnabled = false

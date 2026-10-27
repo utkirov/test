@@ -30,7 +30,7 @@ class Player(x: Float, y: Float) : Body(x, y, 10f, 26f) {
 }
 
 class Enemy(val t: Char, x: Float, y: Float, w: Float, h: Float, var min: Float, var max: Float) : Body(x, y, w, h) {
-    val y0 = y; var dead = 0; var f = (G.rnd() * 60).toInt(); val fly = t == 'b' || t == 'h'
+    val y0 = y; var dead = 0; var f = (G.rnd() * 60).toInt(); val fly = t == 'b' || t == 'h' || t == 'a'
 }
 
 class Item(val t: Char, var x: Float, var y: Float, val egg: String? = null) {
@@ -50,6 +50,7 @@ class Npc(val tx: Int, val ty: Int, val body: String, val hat: String, val atlas
 class Zip(val x0: Float, val y0: Float, val x1: Float, val y1: Float)
 class Wind(val y0: Float, val y1: Float, val dir: Int, val phase: Int, val storm: Boolean = false)
 class Thrower(val x: Float, val y: Float, val trig: Float, val egg: String) { var done = false }
+class Vent(val tx: Int, val ty: Int, val phase: Int)
 class Goal(val x: Float, val y: Float, val w: Float, val h: Float, val kind: String)
 class Boss(var x: Float, var y: Float, val kind: Int) { val w = 34f; val h = 40f; var vx = -0.8f; var vy = 0f; var hp = 3; var inv = 0; var t = 0; var dead = 0 }
 class Shot(var x: Float, var y: Float, var vx: Float, var vy: Float, val k: Char = 'p') { var dead = false; var life = 0 }
@@ -73,8 +74,8 @@ class B(val g: Game) {
     fun I(t: Char, x: Int, y: Int, egg: String? = null) { g.items.add(Item(t, x * T + 3f, y * T + 3f, egg)) }
     fun N(a: Int, b: Int, y: Int) { for (x in a..b) I('n', x, y) }
     fun E(t: Char, x: Int, y: Int, range: Int = 4) {
-        val h = when (t) { 'g' -> 12f; 'b', 'h', 'z' -> 8f; else -> 20f }
-        val sp = when (t) { 'g' -> 0.5f; 'k' -> 1.1f; 's' -> 0.7f; 'c' -> 0.9f; 'b' -> 0.8f; 'z' -> 1.4f; else -> 0.7f }
+        val h = when (t) { 'g', 'o', 't' -> 12f; 'b', 'h', 'z', 'u', 'a' -> 8f; else -> 20f }
+        val sp = when (t) { 'g' -> 0.5f; 'k' -> 1.1f; 's' -> 0.7f; 'c' -> 0.9f; 'b' -> 0.8f; 'z' -> 1.4f; 'u' -> 0.35f; 'o' -> 0.6f; 't' -> 1.5f; 'a' -> 0.9f; else -> 0.7f }
         val e = Enemy(t, x * T + 2f, (y + 1) * T - h, 12f, h, (x - range) * T.toFloat(), (x + range) * T.toFloat()); e.vx = -sp; g.enemies.add(e)
     }
     fun MP(x: Int, y: Int, w: Int, ax: Char, a0: Int, a1: Int, sp: Float, tag: String, kind: String) {
@@ -86,6 +87,8 @@ class B(val g: Game) {
     fun NPC(n: Npc) { g.npcs.add(n) }
     fun goal(tx: Int, ty: Int, kind: String = "gate") { g.goal = Goal(tx * T.toFloat(), ty * T.toFloat(), 32f, 48f, kind) }
     fun ZIP(x0: Float, y0: Float, x1: Float, y1: Float) { g.zips.add(Zip(x0 * T, y0 * T, x1 * T, y1 * T)) }
+    /** Kiln vent (xumdon): a solid block that periodically blasts fire 3 tiles up. */
+    fun FIRE(x: Int, y: Int, phase: Int) { g.map[y][x] = 'F'; g.vents.add(Vent(x, y, phase)) }
     fun WIND(r0: Int, r1: Int, dir: Int, phase: Int) { g.winds.add(Wind(r0 * T.toFloat(), (r1 + 1) * T.toFloat(), dir, phase)) }
     fun STORM(phase: Int) { g.winds.add(Wind(0f, g.rows * T.toFloat(), -1, phase, storm = true)) }
     /** Mini-boss arena between tiles x0..x1 standing on ground row gy. Vertical arenas trigger by height (trigRow). */
@@ -130,7 +133,7 @@ class Game {
     var map: Array<CharArray> = arrayOf(CharArray(1))
     var rows = 17; var cols = 1
     val items = ArrayList<Item>(); val enemies = ArrayList<Enemy>(); val zones = ArrayList<Zone>(); val mps = ArrayList<MP>()
-    val npcs = ArrayList<Npc>(); val throwers = ArrayList<Thrower>(); val zips = ArrayList<Zip>(); val winds = ArrayList<Wind>()
+    val npcs = ArrayList<Npc>(); val throwers = ArrayList<Thrower>(); val zips = ArrayList<Zip>(); val winds = ArrayList<Wind>(); val vents = ArrayList<Vent>()
     val crumble = HashMap<Int, Int>()
     var goal: Goal? = null
     var arenaX0 = -1f; var arenaX1 = -1f; var bossGround = 14f * T
@@ -171,7 +174,7 @@ class Game {
 
     // ================= tiles & physics =================
     fun tileAt(tx: Int, ty: Int): Char = if (tx < 0 || tx >= cols) '#' else if (ty < 0 || ty >= rows) '.' else map[ty][tx]
-    fun solidC(c: Char) = c == '#' || c == 'B' || c == 'J' || c == 'C' || c == 'E' || c == 'e' || c == 'Q' || (c == 'M' && mosaicA) || (c == 'm' && !mosaicA)
+    fun solidC(c: Char) = c == '#' || c == 'B' || c == 'J' || c == 'C' || c == 'E' || c == 'e' || c == 'Q' || c == 'F' || (c == 'M' && mosaicA) || (c == 'm' && !mosaicA)
     fun solidAt(x: Float, y: Float) = solidC(tAt(x, y))
     fun tAt(x: Float, y: Float) = tileAt(floor((x / T).toDouble()).toInt(), floor((y / T).toDouble()).toInt())
 
@@ -191,9 +194,9 @@ class Game {
             val ty = floor(((o.y + o.h) / T).toDouble()).toInt(); val top = ty * T.toFloat()
             for (x in xs) {
                 val tx = floor((x / T).toDouble()).toInt(); val c = tileAt(tx, ty)
-                if (solidC(c) || ((c == '=' || c == 'p') && pb <= top + 0.5f)) {
+                if (solidC(c) || ((c == '=' || c == 'p' || c == 'S' || c == 'r') && pb <= top + 0.5f)) {
                     o.y = top - o.h; o.vy = 0f; o.on = true; if (c == 'p') o.onPipe = true
-                    if (o.land == '.' || c == 'J' || c == 'Q') { o.land = c; o.landTx = tx; o.landTy = ty }
+                    if (o.land == '.' || c == 'J' || c == 'Q' || c == 'S') { o.land = c; o.landTx = tx; o.landTy = ty }
                 }
             }
         } else if (o.vy < 0) {
@@ -206,7 +209,7 @@ class Game {
 
     // ================= flow =================
     private fun clearWorld() {
-        items.clear(); enemies.clear(); zones.clear(); mps.clear(); npcs.clear(); throwers.clear(); zips.clear(); winds.clear(); crumble.clear()
+        items.clear(); enemies.clear(); zones.clear(); mps.clear(); npcs.clear(); throwers.clear(); zips.clear(); winds.clear(); vents.clear(); crumble.clear()
         goal = null; arenaX0 = -1f; arenaX1 = -1f; bossGround = 14f * T; boss = null; shots.clear(); fx.clear(); toasts.clear(); found.clear(); veh = null
         miniDef = null; mini = null; miniDone = false; mosaicA = true; timers.clear()
     }
@@ -364,7 +367,7 @@ class Game {
         if (p.inv > 0) p.inv--
         if (p.pow > 0) { p.pow--; if (frame % 4 == 0) burst(p.x + 5, p.y + 10, "#f4c430", 1) }
         if (p.zip == null && p.zipCd == 0 && !p.inWater) tryZip()
-        updWind(); updCrumble()
+        updWind(); updCrumble(); updVents()
         if (p.y > rows * T + 20) respawn()
         // zones
         val busy = kL || kR || kJ
@@ -450,8 +453,35 @@ class Game {
                 if (tips.add("sand")) tip(L("Зыбучий песок! Прыгай, чтобы не утонуть.", "Botqoq qum! Botib ketmaslik uchun sakra."))
                 if (p.sink >= 16f) { p.sink = 0f; respawn() }
             }
+            'S' -> {
+                p.vy = -7.8f; p.on = false; p.jumps = 0; bounced = 24; Sfx.fx("spring"); silk[p.landTy * cols + p.landTx] = frame; burst(p.x + 5, p.y + p.h, "#f5f0e6", 6); vib(10)
+                if (tips.add("silk")) tip(L("Натянутый шёлк пружинит! Пролетай снизу и прыгай сверху.", "Tortilgan ipak prujinadek otadi! Pastdan o'tib, ustidan sakra."))
+            }
             'M', 'm' -> if (tips.add("mosaic")) tip(L("Мозаика мигает и исчезает в ритме музыки!", "Mozaika musiqa ritmida yonib-o'chadi!"))
         }
+    }
+
+    val silk = HashMap<Int, Int>()
+    fun ventState(v: Vent): Int { val c = (frame + v.phase) % 180; return if (c >= 130) 2 else if (c >= 95) 1 else 0 }
+    private fun updVents() {
+        if (vents.isEmpty()) return
+        val p = pl
+        for (v in vents) {
+            val s = ventState(v)
+            val vx = v.tx * T.toFloat(); val vy = v.ty * T.toFloat()
+            if (s == 2) {
+                if ((frame + v.phase) % 180 == 130 && abs(vx - p.x) < W) Sfx.fx("storm")
+                if (ov(p.x, p.y, p.w, p.h, vx + 3, vy - 3 * T + 4, 10f, 3f * T - 4)) hurt()
+                if (frame % 3 == 0) fx.add(Fx(vx + 4 + (G.rnd() * 8).toFloat(), vy - 4, ((G.rnd() - .5) * 0.6).toFloat(), -1.6f, 22, if (G.rnd() < 0.5) "#ffd65a" else "#f08a24", 2))
+            } else if (s == 1 && frame % 8 == 0) fx.add(Fx(vx + 8, vy - 2, 0f, -0.6f, 26, "#9a8f88", 1))
+            if (s != 0 && abs(vx - p.x) < 80 && tips.add("kiln")) tip(L("Печь-хумдон! Огонь бьёт вверх — проходи, пока она остывает.", "Xumdon! Olov yuqoriga otiladi — u sovuganda o'tib ol."))
+        }
+    }
+    /** 0..1 how solid a mirage tile looks: fake ones fade as you approach, real hidden ones appear. */
+    fun mirageVis(tx: Int, ty: Int, real: Boolean): Float {
+        val dx = abs(pl.x + 5 - (tx * T + 8)); val dy = abs(pl.y + 13 - (ty * T + 8))
+        val d = kotlin.math.sqrt(dx * dx + dy * dy * 0.5f)
+        return if (real) (1f - (d - 34f) / 46f).coerceIn(0.08f, 1f) else ((d - 26f) / 54f).coerceIn(0f, 0.95f)
     }
 
     private fun updCrumble() {
@@ -528,7 +558,8 @@ class Game {
             if (e.fly) { e.x += e.vx; e.y = e.y0 + sin(e.f / 18f) * 10f; if (e.x < e.min || e.x > e.max) e.vx = -e.vx }
             else {
                 e.vy = min(6f, e.vy + 0.32f); val sv = e.vx; if (moveX(e)) e.vx = -sv; moveY(e)
-                if (e.on) { val ax = if (e.vx > 0) e.x + e.w + 1 else e.x - 1; val c = tAt(ax, e.y + e.h + 2); if (!solidC(c) && c != '=' && c != 'p') e.vx = -e.vx }
+                if (e.on) { val ax = if (e.vx > 0) e.x + e.w + 1 else e.x - 1; val c = tAt(ax, e.y + e.h + 2); if (!solidC(c) && c != '=' && c != 'p' && c != 'S' && c != 'r') e.vx = -e.vx
+                    if (e.t == 't') e.vy = -2.6f }
                 if ((e.x < e.min && e.vx < 0) || (e.x > e.max && e.vx > 0)) e.vx = -e.vx
                 if (e.y > rows * T) { dead.add(e); continue }
             }
@@ -602,7 +633,8 @@ class Game {
         boss = Boss(arenaX1 - 4f * T, bossGround - 40, LV.bossKind)
         Music.play(Music.BOSS)
         if (LV.bossKind == 0) toast(L("Жадина-ака: «Казан мой! Ха-ха!»", "Ochko'z aka: «Qozon meniki! Ha-ha!»"))
-        else toast(L("Зикна-ака: «Кафгир мой! Ни монетки не отдам!»", "Ziqna aka: «Kapgir meniki! Bir tiyin ham bermayman!»"))
+        else if (LV.bossKind == 1) toast(L("Зикна-ака: «Кафгир мой! Ни монетки не отдам!»", "Ziqna aka: «Kapgir meniki! Bir tiyin ham bermayman!»"))
+        else toast(L("Хасис-ака: «Полный вперёд! Ляган поплывёт со мной!»", "Xasis aka: «To'liq oldinga! Lagan men bilan suzadi!»"))
         Sfx.fx("roar")
     }
 
@@ -619,8 +651,9 @@ class Game {
         val per = max(50, 100 - (3 - b.hp) * 20 - b.kind * 10)
         if (b.t % per == 0) {
             val dx = p.x - b.x - 12
-            shots.add(Shot(b.x + 17, b.y + 6, (dx / 50f).coerceIn(-3f, 3f), -4.5f, if (b.kind == 1) 'c' else 'p'))
-            if (b.kind == 1 && b.hp < 3) shots.add(Shot(b.x + 17, b.y + 6, (dx / 70f).coerceIn(-3f, 3f), -6f, 'c'))
+            shots.add(Shot(b.x + 17, b.y + 6, (dx / 50f).coerceIn(-3f, 3f), -4.5f, when (b.kind) { 1 -> 'c'; 2 -> 'a'; else -> 'p' }))
+            if (b.kind >= 1 && b.hp < 3) shots.add(Shot(b.x + 17, b.y + 6, (dx / 70f).coerceIn(-3f, 3f), -6f, if (b.kind == 2) 'a' else 'c'))
+            if (b.kind == 2 && b.hp == 1) shots.add(Shot(b.x + 17, b.y + 6, -(dx / 60f).coerceIn(-3f, 3f), -5.2f, 'a'))
             Sfx.fx("throw")
         }
         if (b.t % (per * 3) == per * 3 - 1 && b.y >= bossGround - b.h - 1) b.vy = -6.5f
@@ -630,7 +663,8 @@ class Game {
                 if (b.hp <= 0) {
                     b.dead = 1; Music.play(LV.song)
                     if (b.kind == 0) toast(L("Жадина-ака: «Ой-ой! Забирай свой казан!»", "Ochko'z aka: «Voy-voy! Qozoningni ol!»"))
-                    else toast(L("Зикна-ака: «Ладно! Забирай свой кафгир!»", "Ziqna aka: «Mayli! Kapgiringni ol!»"))
+                    else if (b.kind == 1) toast(L("Зикна-ака: «Ладно! Забирай свой кафгир!»", "Ziqna aka: «Mayli! Kapgiringni ol!»"))
+                    else toast(L("Хасис-ака: «Сдаюсь! Ляган ваш!»", "Xasis aka: «Taslim! Lagan sizniki!»"))
                     Sfx.fx("lose")
                     if (bossHits == 0) egg(zones.find { it.cond == "perfect" })
                 }
@@ -650,7 +684,7 @@ class Game {
             if (ov(p.x, p.y, p.w, p.h, s.x - 3, s.y - 3, 6f, 6f)) { s.dead = true; hurt() }
             if (s.y > rows * T || s.life > 400 || s.x < camX - 60 || s.x > camX + W + 60) s.dead = true
             if (s.k != 'm' && solidAt(s.x, s.y + 3) && s.vy > 0) s.dead = true
-            if (s.dead) burst(s.x, s.y, if (s.k == 'c') "#f4c430" else if (s.k == 's') "#cfe8d0" else "#f0c27a", 4)
+            if (s.dead) burst(s.x, s.y, when (s.k) { 'c' -> "#f4c430"; 's', 'k' -> "#f5f0e6"; 'r' -> "#2fb3c9"; 'a' -> "#9aa1ab"; else -> "#f0c27a" }, 4)
         }
         shots.removeAll { it.dead }
     }
@@ -690,7 +724,7 @@ class Game {
 
     // ================= render =================
     fun render(c: Cv = G.c) {
-        Plat.gfx.identity(); c.scale(3f, 3f)
+        Plat.gfx.identity(); c.scale(3f, 3f); Spr.tick = frame
         val inCut = state == "cut"
         val bgi = if (inCut) (Cuts.ALL[cutId]?.bg ?: 0) else LV.bg
         if (inCut) { camX = (frame * 0.4f) % 1200f; camY = max(0f, rows * T - H.toFloat()) }
@@ -707,11 +741,11 @@ class Game {
             for (i in items) {
                 val x = (i.x - camX).roundToInt().toFloat(); val y = (i.y - camY + if (i.fall) 0f else sin(frame / 12f + i.ph) * 1.5f).roundToInt().toFloat()
                 when (i.t) {
-                    'n' -> G.spr(Spr.NON, x, y, Spr.PAL)
-                    's' -> G.spr(Spr.SOM, x, y + 1, Spr.PAL)
-                    'd' -> { G.spr(Spr.DOP, x - 1, y + 2, Spr.PAL); if (frame % 20 < 10) px("#ffffff", x + 9, y - 1) }
-                    'q' -> { if (LV.bossKind == 1) G.spr(Spr.KAF, x, y, Spr.PAL) else G.spr(Spr.QOZ, x, y + 2, Spr.pal('O' to "#f0c27a")); if (frame % 10 < 5) px("#ffffff", x + 4, y - 2) }
-                    else -> { G.spr(Spr.SX[i.egg] ?: Spr.SX["jeton"]!!, x + 2, y + 2, Spr.PAL); if (frame % 24 < 12) px("#ffffff", x + 10, y) }
+                    'n' -> { Spr.item("non", x - 1, y - 1); if ((frame + (i.ph * 40).toInt()) % 90 < 6) px("#ffffff", x + 2 + (frame % 90) / 2, y + 1, 1, 1) }
+                    's' -> Spr.item("somsa", x - 1, y)
+                    'd' -> { Spr.item("doppi", x - 2, y + 1); if (frame % 20 < 10) px("#ffffff", x + 9, y - 1) }
+                    'q' -> { Spr.item(when (LV.bossKind) { 1 -> "kafgir"; 2 -> "lagan"; else -> "qozon" }, x - 2, y); if (frame % 10 < 5) px("#ffffff", x + 4, y - 2) }
+                    else -> { val ek = i.egg ?: ""; if (ek == "pilla" || ek == "kosa" || ek == "chiganoq") Spr.item(ek, x, y + 1) else G.spr(Spr.SX[ek] ?: Spr.SX["jeton"]!!, x + 2, y + 2, Spr.PAL); if (frame % 24 < 12) px("#ffffff", x + 10, y) }
                 }
             }
             for (e in enemies) {
@@ -790,9 +824,9 @@ class Game {
             val m = ((p.x - runStart) / T).roundToInt().coerceAtLeast(0)
             txt("${m}m", W / 2f, 6f, "#fff1e8", BIG, 1)
             txt(L("Рекорд", "Rekord") + " ${max(best, m)}m", W / 2f, 18f, "#f4c430", SM, 1)
-            G.spr(Spr.NON, W - 50, 20, Spr.PAL); txt("$coins", W - 38f, 22f, size = SM)
+            Spr.item("non", W - 51f, 19f); txt("$coins", W - 37f, 22f, size = SM)
         } else {
-            G.spr(Spr.NON, W - 50, 20, Spr.PAL); txt("$coins/$total", W - 38f, 22f, size = SM)
+            Spr.item("non", W - 51f, 19f); txt("$coins/$total", W - 37f, 22f, size = SM)
             star(W - 50f, 33f); txt("${found.size}/${zones.size}", W - 38f, 33f, "#f4c430", SM)
         }
         if (p.pow > 0) { px(OUT, 5, 16, 52, 5); px("#f4c430", 6, 17, (50f * p.pow / powTime()).roundToInt(), 3) }
@@ -863,6 +897,33 @@ class Game {
                     if ((frame / 10 + tx) % 5 == 0) { px("#b8935a", x + 6, y + 6, 4, 2); px("#a8834a", x + 7, y + 7, 2, 1) }
                     val o = (frame / 4 + tx * 3) % 16; px("#c9a46a", x + o % 12, y + 6, 4, 1); px("#c9a46a", x + (o + 7) % 12, y + 10, 3, 1)
                     if (frame % 30 < 15) px("#b8935a", x + h % 12, y + 2, 2, 1) }
+                'S' -> {   // stretched silk (atlas) sagging after a bounce
+                    val since = frame - (silk[ty * cols + tx] ?: -999); val sag = if (since < 20) ((20 - since) / 4f * sin(since / 2f)).roundToInt() else 0
+                    val cs = arrayOf("#d8373b", "#f4c430", "#2e9b6b", "#2457c5", "#7b3fa0")
+                    px(OUT, x, y - 1 + sag, T, 5); for (k in 0 until 16) { val c = cs[((k + tx * 16) / 3 + (k % 3 / 2)) % 5]; px(c, x + k, y + sag, 1, 3) }
+                    px("#ffffff", x, y + sag, T, 1); px("#59000000", x, y + 2 + sag, T, 1)
+                    for (k in 0 until 4) px("#f5f0e6", x + 2 + k * 4, y + 1 + sag, 1, 1)
+                    if (tileAt(tx - 1, ty) != 'S') { px(OUT, x - 1, y - 2, 3, 22); px("#8b5a2b", x, y - 1, 1, 20) }
+                    if (tileAt(tx + 1, ty) != 'S') { px(OUT, x + 14, y - 2, 3, 22); px("#8b5a2b", x + 15, y - 1, 1, 20) } }
+                'F' -> {   // xumdon kiln vent
+                    Plat.gfx.cached("tile:kiln", 16, 16, x, y) {
+                        px(OUT, 0, 0, 16, 16); px("#a8502e", 1, 1, 14, 15); px("#c0643a", 1, 1, 14, 2); px("#7a3a20", 1, 12, 14, 4)
+                        for (k in 0 until 3) px("#7a3a20", 2 + k * 5, 6, 3, 1); px("#1c1410", 4, 0, 8, 3); px("#5a2a14", 5, 0, 6, 1)
+                    }
+                    val vs = vents.firstOrNull { it.tx == tx && it.ty == ty }?.let { ventState(it) } ?: 0
+                    if (vs >= 1) { val gl = if (vs == 2) "#ffd65a" else if (frame % 10 < 5) "#f08a24" else "#a8502e"; px(gl, x + 5, y, 6, 2) }
+                    if (vs == 2) {
+                        val fl = (frame / 2) % 3
+                        G.alpha(0.85f) { px("#f08a24", x + 3, y - 3 * T + 6, 10, 3 * T - 6); px("#ffd65a", x + 5, y - 3 * T + 2 + fl * 2, 6, 3 * T - 2 - fl * 2); px("#fff6c8", x + 7, y - 2 * T + fl * 3, 2, 2 * T - fl * 3) }
+                        for (k in 0 until 3) px("#ffd65a", x + 3 + (hash(k, frame / 3) % 10), y - 3 * T + (hash(k + 5, frame / 3) % 12), 1, 2)
+                    } }
+                'R', 'r' -> {   // mirage boardwalk: fake 'R' fades as you come near, real 'r' fades in
+                    val vis = mirageVis(tx, ty, ch == 'r')
+                    val shimmer = sin(frame / 7f + tx).toFloat()
+                    G.alpha(vis) {
+                        Plat.gfx.cached("tile:${LV.bg}:P:${h % 3}", 16, 8, x, y - 1 + (if (ch == 'R') shimmer.roundToInt() else 0)) { Tiles.plank(LV.bg, th, h % 3) }
+                    }
+                    if (ch == 'r' && vis < 0.3f && (frame / 20 + tx) % 9 == 0) px("#fff6c8", x + (h % 12) + 2, y + 1, 1, 1) }
                 'M', 'm' -> { val act = (ch == 'M') == mosaicA
                     if (act && !blink) Plat.gfx.cached("tile:mosaic", 16, 16, x, y) {
                         px(OUT, 0, 0, T, T); px("#1f4ea8", 1, 1, 14, 14); px("#2fb3c9", 2, 2, 12, 12); px("#1f4ea8", 3, 3, 10, 10)
@@ -924,6 +985,11 @@ class Game {
                 val hx = if (d > 0) x + w - 2 else x - 10
                 px(OUT, hx - 1, y - 9, 13, 16); px("#d9a35a", hx + (if (d > 0) 0 else 6), y - 2, 6, 8); px("#d9a35a", hx, y - 8, 12, 6); px("#000000", hx + (if (d > 0) 8 else 2), y - 7, 1, 1)
             }
+            "shuttle" -> {   // loom shuttle carrying a silk bobbin
+                px(OUT, x - 3, y - 1, w + 6, 8); px("#b07a45", x - 2, y, w + 4, 6); px("#d9a66a", x - 2, y, w + 4, 1); px("#7a4a20", x - 2, y + 5, w + 4, 1)
+                px("#8b5a2b", x - 3, y + 2, 2, 2); px("#8b5a2b", x + w + 1, y + 2, 2, 2)
+                val cs = arrayOf("#d8373b", "#f4c430", "#2e9b6b", "#2457c5"); for (k in 0 until 4) px(cs[k], x + w / 2 - 6 + k * 3, y + 1, 3, 3)
+                G.line("#f5f0e6", x + w / 2, y + 2, x + w / 2 - m.dir * 40, y + 2 + 30) }
             else -> { px(OUT, x - 1, y - 1, w + 2, 8); px("#c9ced6", x, y, w, 6); px("#6b7280", x, y + 5, w, 1); px("#6b7280", x + w / 2, y - 200, 1, 200) }
         }
     }
@@ -961,24 +1027,10 @@ class Game {
         if (b.dead > 40) return
         if (b.inv > 0 && frame % 6 < 3) return
         val c = G.c; c.save(); c.translate((b.x - camX).roundToInt().toFloat(), (b.y - camY).roundToInt().toFloat())
-        val f = (b.t / 8) % 2
-        if (b.kind == 0) G.drawParts(listOf(
-            P(7, 31, 5, 9 - f, "#9aa1ab"), P(22, 31, 5, 8 + f, "#9aa1ab"), P(5, 38 - f, 9, 2, "#55556a"), P(20, 37 + f, 9, 3, "#55556a"),
-            P(4, 10, 6, 4, "#3a2f5a"), P(24, 10, 6, 4, "#3a2f5a"),
-            P(11, 0, 12, 12, "#e2a676") { px("#000000", 12, 4, 10, 2); px("#ffffff", 13, 4, 2, 1); px("#1c1410", 13, 8, 8, 2); px("#1c1410", 11, 0, 12, 2) },
-            P(-2, 13, 38, 4, "#55556a") { px("#f0c27a", 0, 13, 34, 2) },
-            P(0, 17, 34, 15, "#2b2b33") { px("#3a3a48", 2, 19, 30, 2); px("#f4c430", 13, 24, 8, 4); px("#b8860b", 16, 23, 2, 6) },
-            P(12, 12, 10, 2, "#f4c430")), 0f)
-        else G.drawParts(listOf(   // Ziqna-aka on a mechanical camel
-            P(4, 30, 4, 10 - f, "#9aa1ab"), P(12, 30, 4, 9 + f, "#9aa1ab"), P(20, 30, 4, 10 - f, "#9aa1ab"), P(28, 30, 4, 9 + f, "#9aa1ab"),
-            P(0, 20, 34, 11, "#c9a227") { px("#8b6b1a", 2, 26, 30, 2); for (k in 0 until 5) px("#55556a", 4 + k * 6, 22, 2, 2) },
-            P(30, 10, 5, 12, "#c9a227"), P(30, 6, 9, 6, "#c9a227") { px("#e24b4a", 36, 7, 2, 2) },
-            P(10, 8, 14, 13, "#c9a227") { px("#f4c430", 16, 8, 2, 13); px("#8b6b1a", 10, 16, 14, 2) },
-            P(12, -3, 10, 11, "#e2a676") { px("#000000", 18, 1, 2, 1); px("#1c1410", 13, 6, 8, 2); px("#f2f2f2", 14, 7, 6, 1) },
-            P(11, -6, 12, 4, "#1c1410") { px("#f4c430", 13, -5, 8, 1) }), 0f)
+        G.drawParts(Foes.boss(b.kind, b.t, b.inv > 0), 0f)
         c.restore()
         for (i in 0 until 3) G.spr(Spr.HRT, W / 2 - 14 + i * 10, 22, Spr.pal('R' to if (i < b.hp) "#7b3fa0" else "#4a4a5a"))
-        txt(if (b.kind == 0) L("ЖАДИНА-АКА", "OCHKO'Z AKA") else L("ЗИКНА-АКА", "ZIQNA AKA"), W / 2f, 13f, "#f4c430", SM, 1)
+        txt(when (b.kind) { 0 -> L("ЖАДИНА-АКА", "OCHKO'Z AKA"); 1 -> L("ЗИКНА-АКА", "ZIQNA AKA"); else -> L("ХАСИС-АКА", "XASIS AKA") }, W / 2f, 13f, "#f4c430", SM, 1)
         for (s in shots) drawShot(s)
     }
 
@@ -989,6 +1041,9 @@ class Game {
             'm' -> { px(OUT, x - 5, y - 4, 11, 9); px("#e9c94a", x - 4, y - 3, 9, 7); px("#b89a2a", x - 1 + (frame / 4) % 3, y - 3, 1, 7) }
             'j' -> { px(OUT, x - 3, y - 3, 7, 7); px("#c98a3a", x - 2, y - 2, 5, 5); px("#8a5422", x - 1, y - 1, 3, 3) }
             's' -> { px("#cfe8d0", x - 2, y - 2, 4, 4); px("#ffffff", x - 1, y - 1, 2, 2) }
+            'k' -> { px(OUT, x - 3, y - 3, 7, 6); px("#f5f0e6", x - 2, y - 2, 5, 4); px("#ffffff", x - 1, y - 2, 2, 1); G.line("#f5f0e6", x, y + 2, x - s.vx * 3, y + 6) }
+            'r' -> { val r = (s.life / 4) % 2; px(OUT, x - 3, y - 3 + r, 7, 5 - r); px("#2fb3c9", x - 2, y - 2 + r, 5, 3 - r); px("#f5f0e6", x - 1, y - 2 + r, 2, 1); px("#c0643a", x - 2, y + 1, 5, 1) }
+            'a' -> { val sw = (s.life / 5) % 4; px(OUT, x - 1, y - 5, 3, 9); px("#9aa1ab", x, y - 4, 1, 7); px(OUT, x - 4, y + 1, 9, 3); px("#7a808c", x - 3, y + 2, 7, 1); px("#7a808c", x - 3 + (if (sw < 2) 0 else 6), y, 1, 2); px(OUT, x - 2, y - 7, 5, 3); px("#c0703a", x - 1, y - 6, 3, 1) }
             else -> { px(OUT, x - 3, y - 3, 7, 7); px("#f0c27a", x - 2, y - 2, 5, 5); px("#f08a24", x, y - 1) }
         }
     }
@@ -1078,6 +1133,7 @@ class Game {
 
     init {
         Music.enabled = musicOn; Sfx.enabled = sfxOn
+        if (unlock == 8 && stars(8) != 0) { unlock = 9; pI("unlock", 9) }   // chapter 3 opens for players who finished chapter 2
         eggTotals.size
         loadLevel(0); Menu.layout(this)
     }

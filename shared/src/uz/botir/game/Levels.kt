@@ -311,6 +311,88 @@ fun Game.buildLevels(): List<LevelDef> = listOf(
             val cx = X(85); val cy = Y(14); px("#8b5a2b", cx - 4, cy - 46, 60, 4)
             for (k in 0 until 4) { val x = cx + k * 15; px("#6b3f1f", x, cy - 42, 4, 42); for (q in 0 until 6) px("#b07a45", x + 1, cy - 40 + q * 7, 2, 3) }
         })
+,
+    // 10 ─ MARGILAN: stretched silk + loom shuttles
+    LevelDef(a("Маргилан", "Marg'ilon"),
+        a("Глава 3. Хасис-ака, младший брат, украл риштанский ляган деда! Его след ведёт в шёлковый Маргилан.", "3-bob. Kenja uka Xasis aka bobomning Rishton laganini o'g'irladi! Uning izi ipakli Marg'ilonga olib boradi."),
+        a("Механика: натянутый шёлк подбрасывает высоко, а ткацкие челноки перевезут через ямы.", "Mexanika: tortilgan ipak baland otadi, to'quv mokilari esa chuqurlardan olib o'tadi."),
+        9, Theme("#5aa83f", "#86cc55", "#a8703e", "#8f5e32", "#d8c4a0", "#b8a07a", "#8b5a2b", "#b07a45"),
+        sh = a("Маргилан", "Marg'ilon"), song = Music.FERGANA, cutIn = "c10",
+        build = { b -> newMap(128, 17); with(b) {
+            G(0, 16, 14); N(4, 8, 12); E('u', 12, 13, 3)
+            P(17, 21, 14, 'S'); N(18, 21, 8)
+            G(22, 40, 14); P(26, 29, 10); N(26, 29, 9); E('u', 32, 13, 3); P(35, 37, 12, 'S'); P(36, 39, 6); N(36, 37, 5); I('x', 39, 5, "pilla")
+            MP(41, 12, 3, 'x', 41, 46, 0.7f, "moki", "shuttle"); N(42, 46, 10)
+            G(47, 62, 14); WB(52, 53, 11, 13); N(55, 60, 12); E('u', 58, 13, 3)
+            P(63, 68, 14, 'S'); N(64, 67, 7)
+            G(69, 86, 14); P(72, 75, 11); P(77, 80, 8); N(77, 80, 7); I('d', 74, 10); E('u', 82, 13, 2); P(84, 85, 13, 'S'); P(84, 88, 6); N(85, 88, 5)
+            MP(87, 12, 3, 'x', 87, 91, 0.8f, "moki2", "shuttle")
+            G(92, 127, 14); N(94, 98, 12); I('s', 99, 12); MINI('W', 101, 114, 14); goal(115, 11)
+            Z("tut", a("Шелковица", "Tut daraxti"), a("Шелковица! Шелкопряды едят только листья тута.", "Tut daraxti! Ipak qurtlari faqat tut bargini yeydi."), 5, 10, 4, 4, "jump")
+            Z("yodgorlik", a("Фабрика «Ёдгорлик»", "«Yodgorlik» fabrikasi"), a("Фабрика «Ёдгорлик»: здесь шёлк до сих пор ткут вручную, как сто лет назад.", "«Yodgorlik» fabrikasi: bu yerda ipak hali ham qo'lda, yuz yil avvalgidek to'qiladi."), 30, 12, 4, 2, "still")
+            Z("pilla", a("Кокон", "Pilla"), a("Кокон шелкопряда! Его разматывают в одну тонкую нить длиной в сотни метров.", "Pilla! U yuzlab metr uzunlikdagi bitta ingichka ipga yechiladi."), 0, 0, 0, 0, "item")
+            Z("moki", a("Ткацкий челнок", "To'quv mokisi"), a("Ботир катается на ткацком челноке. Вжик-вжик!", "Botir to'quv mokisida yuribdi. Vjik-vjik!"), 0, 0, 0, 0, "ride")
+            Z("atlas", a("Атлас и адрас", "Atlas va adras"), a("Атлас и адрас — узорный шёлк. Нити красят ещё до того, как соткут ткань.", "Atlas va adras — naqshli ipak. Iplar mato to'qilishidan oldin bo'yaladi."), 70, 0, 1, 17, "pass")
+            Z("osmon", a("Шёлковое небо", "Ipak osmon"), a("С такой высоты видна вся Ферганская долина!", "Bu balandlikdan butun Farg'ona vodiysi ko'rinadi!"), 63, 3, 6, 3, "touch")
+            NPC(Npc(31, 14, "#d8373b", "#f4c430", atlas = true, scarf = true)); NPC(Npc(95, 14, "#2457c5", "#15151c", wave = true))
+        } }),
+
+    // 11 ─ RISHTAN: xumdon kiln fire vents
+    LevelDef(a("Риштан", "Rishton"),
+        a("Хасис-ака спрятался в Риштане — городе гончаров. Говорят, он хочет наделать подделок лягана!", "Xasis aka kulollar shahri Rishtonga yashirindi. Aytishlaricha, u lagandan soxta nusxalar yasamoqchi!"),
+        a("Механика: печи-хумдоны выбрасывают огонь. Жди, пока пламя погаснет, и беги!", "Mexanika: xumdonlar olov chiqaradi. Olov o'chguncha kut va yugur!"),
+        10, Theme("#6aa84f", "#93c96a", "#b0583a", "#933f28", "#c97a50", "#a85f3a", "#8b5a2b", "#b07a45"),
+        sh = a("Риштан", "Rishton"), song = Music.RISHTAN, cutIn = "c11",
+        build = { b -> newMap(126, 17); with(b) {
+            G(0, 14, 14); N(4, 8, 12); E('o', 11, 13, 3)
+            G(15, 34, 14); FIRE(18, 13, 0); FIRE(24, 13, 60); N(20, 22, 12); P(27, 30, 10); N(27, 30, 9); E('o', 32, 13, 2)
+            P(35, 37, 13)
+            G(38, 56, 14); FIRE(41, 13, 90); FIRE(44, 13, 30); FIRE(47, 13, 120); WB(50, 51, 11, 13); I('x', 51, 10, "kosa"); N(52, 55, 12)
+            G(57, 72, 13); FIRE(60, 12, 0); P(62, 65, 9); N(62, 65, 8); I('d', 64, 7); FIRE(66, 12, 70); E('o', 69, 12, 2)
+            P(73, 76, 12)
+            G(77, 94, 14); FIRE(81, 13, 40); E('b', 85, 9, 4); N(83, 87, 12); FIRE(88, 13, 100); I('s', 92, 12)
+            G(95, 125, 14); N(96, 98, 12); MINI('L', 99, 112, 14); goal(113, 11)
+            Z("charx", a("Гончарный круг", "Kulolchilik charxi"), a("Гончар крутит круг ногой — так в Риштане работают уже много веков.", "Kulol charxni oyog'i bilan aylantiradi — Rishtonda asrlar davomida shunday ishlashadi."), 4, 12, 3, 2, "still")
+            Z("ishqor", a("Глазурь ишкор", "Ishqor siri"), a("Глазурь «ишкор» делают из золы степных растений — отсюда бирюзовый цвет Риштана.", "«Ishqor» sirini cho'l o'simliklari kulidan tayyorlashadi — Rishtonning feruza rangi shundan."), 27, 8, 4, 2, "touch")
+            Z("kosa", a("Риштанская коса", "Rishton kosasi"), a("Риштанская коса! Из таких пьют чай по всему Узбекистану.", "Rishton kosasi! Bunday kosalarda butun O'zbekistonda choy ichishadi."), 0, 0, 0, 0, "item")
+            Z("xumdon", a("Хумдон", "Xumdon"), a("Хумдон — печь для обжига. Внутри почти тысяча градусов!", "Xumdon — kuydirish pechi. Ichida qariyb ming daraja issiq!"), 48, 0, 1, 17, "pass")
+            Z("anor", a("Узор граната", "Anor naqshi"), a("Гранат — любимый узор риштанских мастеров, символ изобилия.", "Anor — rishtonlik ustalarning sevimli naqshi, to'kinlik ramzi."), 62, 7, 4, 2, "still")
+            Z("loy", a("Красная глина", "Qizil loy"), a("Местная красная глина — секрет риштанской керамики.", "Mahalliy qizil loy — Rishton sopolining siri."), 82, 11, 5, 3, "jump")
+            NPC(Npc(6, 14, "#f5f0e6", "#15151c", arm = 12)); NPC(Npc(97, 14, "#2e9b6b", "#f2f2f2", scarf = true, beard = true))
+        } }),
+
+    // 12 ─ ARAL: mirages + final boss of chapter 3
+    LevelDef(a("Арал", "Orol"),
+        a("Хасис-ака угнал ржавый корабль у высохшего Аральского моря. Последняя битва — среди песков и миражей!", "Xasis aka qurigan Orol dengizi yonidagi zanglagan kemani olib qochdi. So'nggi jang — qumlar va sarob orasida!"),
+        a("Механика: миражи! Ложные мостки тают вблизи, настоящие проявляются. В конце — босс!", "Mexanika: sarob! Soxta ko'priklar yaqinda eriydi, haqiqiylari paydo bo'ladi. Oxirida — boss!"),
+        11, Theme("#d9d2bf", "#efe9da", "#c2a77a", "#a88d62", "#7a5a40", "#5a4030", "#8a4a2a", "#b0663a"), boss = true,
+        sh = a("Арал", "Orol"), song = Music.ARAL, cutIn = "c12", cutOut = "end3", bossKind = 2,
+        build = { b -> newMap(116, 17); with(b) {
+            G(0, 14, 14); N(4, 8, 12); E('t', 11, 13, 3)
+            P(15, 20, 11, 'r'); P(15, 20, 13, 'R'); N(15, 20, 10)
+            G(21, 36, 14); E('a', 27, 9, 4); N(23, 26, 12); P(30, 33, 10, 'r'); N(30, 33, 9)
+            P(37, 41, 12, 'r'); P(38, 40, 9, 'R'); N(37, 41, 11)
+            G(42, 58, 14); WB(47, 48, 11, 13); E('t', 53, 13, 3); I('x', 55, 12, "chiganoq")
+            P(59, 60, 12, 'r'); P(61, 62, 12, 'R'); P(63, 64, 12, 'r'); N(59, 60, 11); N(63, 64, 11)
+            G(65, 80, 14); P(68, 71, 10); N(68, 71, 9); I('d', 70, 9); E('a', 75, 9, 4); I('s', 78, 12)
+            G(81, 115, 14); N(82, 86, 12); WB(114, 115, 0, 13)
+            g.arenaX0 = 90f * T; g.arenaX1 = 114f * T
+            Z("muynak", a("Кладбище кораблей", "Kemalar qabristoni"), a("Кладбище кораблей Муйнака. Когда-то здесь был морской порт!", "Mo'ynoq kemalar qabristoni. Bir paytlar bu yerda dengiz porti bo'lgan!"), 22, 0, 1, 17, "pass")
+            Z("sarob", a("Настоящая тропа", "Haqiqiy yo'l"), a("Ты нашёл настоящую дорожку среди миражей!", "Sarob orasidan haqiqiy yo'lni topding!"), 30, 8, 4, 2, "touch")
+            Z("savitskiy", a("Музей Савицкого", "Savitskiy muzeyi"), a("Музей Савицкого в Нукусе — одна из крупнейших в мире коллекций русского авангарда.", "Nukusdagi Savitskiy muzeyi — dunyodagi eng yirik rus avangardi to'plamlaridan biri."), 43, 12, 3, 2, "still")
+            Z("chiganoq", a("Ракушка", "Chig'anoq"), a("Ракушка посреди пустыни — память об Аральском море.", "Cho'l o'rtasida chig'anoq — Orol dengizidan xotira."), 0, 0, 0, 0, "item")
+            Z("saksovul", a("Саксаул", "Saksovul"), a("Саксаул сажают на дне Арала, чтобы остановить пески.", "Saksovulni Orol tubiga qumni to'xtatish uchun ekishadi."), 72, 12, 3, 2, "still")
+            Z("qoraqalpoq", a("Салам, Нукус!", "Salom, Nukus!"), a("Каракалпак — значит «чёрная шапка». Ботир снял дуппи в знак уважения!", "Qoraqalpoq — «qora qalpoq» degani. Botir hurmat belgisi sifatida do'ppisini qo'liga oldi!"), 83, 12, 2, 2, "touch")
+            Z("mukammal3", a("Идеальная битва III", "Mukammal jang III"), a("Хасис-ака повержен без единой царапины!", "Xasis aka bir marta ham tegmasdan yengildi!"), 0, 0, 0, 0, "perfect")
+            NPC(Npc(84, 14, "#2b2f3a", "#15151c", wave = true))
+        } },
+        back = {
+            val sx = X(3); val sy = Y(14); px("#5a4030", sx, sy - 26, 2, 26); px("#5a4030", sx + 30, sy - 26, 2, 26); px(OUT, sx - 2, sy - 36, 38, 12); px("#2457c5", sx - 1, sy - 35, 36, 10)
+            txt("MO'YNOQ", sx + 17, sy - 33, "#ffffff", SM, 1, false)
+            val mx = X(43); val my = Y(14); px("#d9c4a0", mx - 10, my - 30, 54, 30); px("#eadbbf", mx - 9, my - 29, 52, 28); px("#2457c5", mx - 10, my - 34, 54, 4)
+            for (k in 0 until 3) { px("#7a5a40", mx - 4 + k * 16, my - 24, 10, 12); px(arrayOf("#d8373b", "#f4c430", "#2457c5")[k], mx - 3 + k * 16, my - 23, 8, 10); px("#ffffff", mx - 1 + k * 16, my - 21, 3, 3) }
+            txt("SAVITSKIY", mx + 17, my - 44, "#f4c430", SM, 1)
+        })
 )
 
 /** Endless runner definition: the map is generated on the fly by Game.startEndless(). */

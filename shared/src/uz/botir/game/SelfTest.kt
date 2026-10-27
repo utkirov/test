@@ -20,7 +20,7 @@ object SelfTest {
             g.kR = true; g.kL = false
             val ahead = p.x + p.w + 8
             val wall = g.solidAt(ahead, p.y + p.h - 4) || g.solidAt(ahead, p.y + 6)
-            val gap = !g.solidAt(ahead, p.y + p.h + 4) && g.tAt(ahead, p.y + p.h + 4) != '=' && !g.solidAt(ahead, p.y + p.h + 20)
+            val gap = !g.solidAt(ahead, p.y + p.h + 4) && g.tAt(ahead, p.y + p.h + 4).let { it != '=' && it != 'r' && it != 'S' } && !g.solidAt(ahead, p.y + p.h + 20)
             if (p.on && (wall || gap || (g.mini != null && f % 30 == 0) || f % 90 == 0)) p.buf = 7
             g.kJ = p.vy < 0 || p.buf > 0
         }
