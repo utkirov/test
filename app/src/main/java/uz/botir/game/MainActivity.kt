@@ -47,16 +47,16 @@ class MainActivity : Activity() {
 
     override fun onWindowFocusChanged(hasFocus: Boolean) { super.onWindowFocusChanged(hasFocus); if (hasFocus) hideBars() }
 
-    override fun onResume() { super.onResume(); if (!tool) { view.start(); Music.start() } }
+    override fun onResume() { super.onResume(); if (!tool) { view.start(); AndroidAudio.start() } }
 
     override fun onPause() {
         super.onPause()
         if (view.game.state == "play") view.game.show("pause")
         view.game.kL = false; view.game.kR = false; view.game.kJ = false
-        view.stop(); Music.stop()
+        view.stop(); AndroidAudio.stop()
     }
 
-    override fun onDestroy() { super.onDestroy(); Sfx.release() }
+    override fun onDestroy() { super.onDestroy(); AndroidAudio.release() }
 
     @Deprecated("Deprecated in Java")
     @Suppress("DEPRECATION")

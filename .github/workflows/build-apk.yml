@@ -1,4 +1,4 @@
-name: Build APK
+name: Build APK and Telegram Mini App
 
 on:
   push:
@@ -79,8 +79,39 @@ jobs:
           name: test-out
           path: test-out/
 
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Download Kotlin compiler
+        run: |
+          curl -sSL -o kotlin.zip https://github.com/JetBrains/kotlin/releases/download/v2.0.21/kotlin-compiler-2.0.21.zip
+          unzip -q kotlin.zip
+      - name: Build web version
+        run: KOTLINC=kotlinc/bin/kotlinc-js KSTD=kotlinc/lib/kotlin-stdlib-js.klib VERSION=${{ github.sha }} bash web/build.sh
+      - name: Publish to GitHub Pages (gh-pages branch)
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: build/web/site
+          publish_branch: gh-pages
+          force_orphan: true
+      - name: Zip site
+        run: cd build/web/site && zip -qr ../../../botir-web.zip .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web-out
+          path: botir-web.zip
+
   release:
-    needs: [build, test]
+    needs: [build, test, web]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -94,6 +125,11 @@ jobs:
         with:
           name: test-out
           path: test-out/
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: web-out
+          path: web-out/
       - name: Pack screenshots
         run: |
           mkdir -p test-out
@@ -116,3 +152,4 @@ jobs:
             test-out/device_title.png
             test-out/device_play.png
             store-graphics.zip
+            web-out/botir-web.zip

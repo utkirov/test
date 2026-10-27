@@ -2,7 +2,6 @@ package uz.botir.game
 
 import uz.botir.game.G.px
 import uz.botir.game.G.txt
-import java.util.Calendar
 import kotlin.math.sin
 
 /** Seasonal events: New Year snow, Navruz petals, Ramadan crescent and lanterns. */
@@ -16,8 +15,8 @@ object Season {
     )
 
     fun auto(): Int {
-        val c = Calendar.getInstance()
-        val y = c.get(Calendar.YEAR); val m = c.get(Calendar.MONTH) + 1; val d = c.get(Calendar.DAY_OF_MONTH)
+        val t = Plat.today()
+        val y = t[0]; val m = t[1]; val d = t[2]
         val md = m * 100 + d
         if (md in 315..331) return NAVRUZ
         RAMADAN_DATES[y]?.let { r -> if (md in (r[0] * 100 + r[1])..(r[2] * 100 + r[3])) return RAMADAN }

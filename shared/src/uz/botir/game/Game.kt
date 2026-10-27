@@ -1,10 +1,9 @@
 package uz.botir.game
 
-import android.content.Context
-import android.graphics.Canvas
 import uz.botir.game.G.px
 import uz.botir.game.G.txt
 import kotlin.math.abs
+import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
@@ -30,11 +29,11 @@ class Player(x: Float, y: Float) : Body(x, y, 10f, 26f) {
 }
 
 class Enemy(val t: Char, x: Float, y: Float, w: Float, h: Float, var min: Float, var max: Float) : Body(x, y, w, h) {
-    val y0 = y; var dead = 0; var f = (Math.random() * 60).toInt(); val fly = t == 'b' || t == 'h'
+    val y0 = y; var dead = 0; var f = (G.rnd() * 60).toInt(); val fly = t == 'b' || t == 'h'
 }
 
 class Item(val t: Char, var x: Float, var y: Float, val egg: String? = null) {
-    var w = 10f; var h = 10f; val ph = (Math.random() * 6).toFloat(); var fall = false; var vy = 0f; var drift = 0.6f
+    var w = 10f; var h = 10f; val ph = (G.rnd() * 6).toFloat(); var fall = false; var vy = 0f; var drift = 0.6f
 }
 
 class MP(var x: Float, var y: Float, val w: Float, val ax: Char, val a0: Float, val a1: Float, val sp: Float, val tag: String, val kind: String) {
@@ -94,20 +93,20 @@ class B(val g: Game) {
     }
 }
 
-class Game(private val ctx: Context) {
+class Game {
     // ================= persistence =================
-    private val prefs = ctx.getSharedPreferences("botir", Context.MODE_PRIVATE)
-    private fun gI(k: String, d: Int) = prefs.getInt(k, d)
-    private fun pI(k: String, v: Int) = prefs.edit().putInt(k, v).apply()
-    private fun gB(k: String, d: Boolean) = prefs.getBoolean(k, d)
-    private fun pB(k: String, v: Boolean) = prefs.edit().putBoolean(k, v).apply()
-    private fun gS(k: String): Set<String> = prefs.getStringSet(k, emptySet()) ?: emptySet()
-    private fun addS(k: String, v: String) { val s = HashSet(gS(k)); if (s.add(v)) prefs.edit().putStringSet(k, s).apply() }
+    private val st get() = Plat.store
+    private fun gI(k: String, d: Int) = st.getInt(k, d)
+    private fun pI(k: String, v: Int) = st.putInt(k, v)
+    private fun gB(k: String, d: Boolean) = st.getBool(k, d)
+    private fun pB(k: String, v: Boolean) = st.putBool(k, v)
+    private fun gS(k: String): Set<String> = st.getSet(k)
+    private fun addS(k: String, v: String) { val s = HashSet(gS(k)); if (s.add(v)) st.putSet(k, s) }
 
-    var lang = prefs.getString("lang", "ru") ?: "ru"
+    var lang = st.getString("lang", Plat.defaultLang)
     var unlock = gI("unlock", 0)
     var wallet = gI("wallet", 0)
-    var skinId = prefs.getString("skin", "street") ?: "street"
+    var skinId = st.getString("skin", "street")
     var best = gI("best", 0)
     var musicOn = gB("music", true); var sfxOn = gB("sfx", true); var vibOn = gB("vib", true)
     var btnSize = gI("btnSize", 1); var lefty = gB("lefty", false); var seasonSet = gI("season", 0)
@@ -122,8 +121,7 @@ class Game(private val ctx: Context) {
     fun skinAvailable(s: Skin) = s.price == 0 && (s.season == 0 || s.season == season) || owned(s.id)
     fun L(ru: String, uz: String) = if (lang == "uz") uz else ru
 
-    var vibrate: (Long) -> Unit = {}
-    fun vib(ms: Long) { if (vibOn) try { vibrate(ms) } catch (_: Throwable) { } }
+    fun vib(ms: Long) { if (vibOn) try { Plat.vibrate(ms) } catch (_: Throwable) { } }
 
     // ================= level data =================
     var LVI = 0
@@ -174,13 +172,13 @@ class Game(private val ctx: Context) {
     fun tileAt(tx: Int, ty: Int): Char = if (tx < 0 || tx >= cols) '#' else if (ty < 0 || ty >= rows) '.' else map[ty][tx]
     fun solidC(c: Char) = c == '#' || c == 'B' || c == 'J' || c == 'C' || c == 'E' || c == 'e' || c == 'Q' || (c == 'M' && mosaicA) || (c == 'm' && !mosaicA)
     fun solidAt(x: Float, y: Float) = solidC(tAt(x, y))
-    fun tAt(x: Float, y: Float) = tileAt(Math.floor((x / T).toDouble()).toInt(), Math.floor((y / T).toDouble()).toInt())
+    fun tAt(x: Float, y: Float) = tileAt(floor((x / T).toDouble()).toInt(), floor((y / T).toDouble()).toInt())
 
     fun moveX(o: Body): Boolean {
         o.x += o.vx; var hit = false
         val ys = floatArrayOf(o.y + 1, o.y + o.h / 2, o.y + o.h - 1)
-        if (o.vx > 0) { if (ys.any { solidAt(o.x + o.w, it) }) { o.x = Math.floor(((o.x + o.w) / T).toDouble()).toFloat() * T - o.w - 0.01f; hit = true } }
-        else if (o.vx < 0) { if (ys.any { solidAt(o.x, it) }) { o.x = (Math.floor((o.x / T).toDouble()).toFloat() + 1) * T; hit = true } }
+        if (o.vx > 0) { if (ys.any { solidAt(o.x + o.w, it) }) { o.x = floor(((o.x + o.w) / T).toDouble()).toFloat() * T - o.w - 0.01f; hit = true } }
+        else if (o.vx < 0) { if (ys.any { solidAt(o.x, it) }) { o.x = (floor((o.x / T).toDouble()).toFloat() + 1) * T; hit = true } }
         if (hit) o.vx = 0f
         return hit
     }
@@ -189,16 +187,16 @@ class Game(private val ctx: Context) {
         val pb = o.y + o.h; o.y += o.vy; o.on = false; o.onPipe = false; o.land = '.'
         val xs = floatArrayOf(o.x + 1, o.x + o.w - 1)
         if (o.vy > 0) {
-            val ty = Math.floor(((o.y + o.h) / T).toDouble()).toInt(); val top = ty * T.toFloat()
+            val ty = floor(((o.y + o.h) / T).toDouble()).toInt(); val top = ty * T.toFloat()
             for (x in xs) {
-                val tx = Math.floor((x / T).toDouble()).toInt(); val c = tileAt(tx, ty)
+                val tx = floor((x / T).toDouble()).toInt(); val c = tileAt(tx, ty)
                 if (solidC(c) || ((c == '=' || c == 'p') && pb <= top + 0.5f)) {
                     o.y = top - o.h; o.vy = 0f; o.on = true; if (c == 'p') o.onPipe = true
                     if (o.land == '.' || c == 'J' || c == 'Q') { o.land = c; o.landTx = tx; o.landTy = ty }
                 }
             }
         } else if (o.vy < 0) {
-            if (xs.any { solidAt(it, o.y) }) { o.y = (Math.floor((o.y / T).toDouble()).toFloat() + 1) * T; o.vy = 0f }
+            if (xs.any { solidAt(it, o.y) }) { o.y = (floor((o.y / T).toDouble()).toFloat() + 1) * T; o.vy = 0f }
         }
     }
 
@@ -274,7 +272,7 @@ class Game(private val ctx: Context) {
         if (pl.hp <= 0) { state = "dead"; delayed(30) { if (endless) endRun() else show("over") } }
     }
     private fun respawn() { pl.inv = 0; pl.pow = 0; hurt(); if (pl.hp > 0) { pl.x = pl.safeX; pl.y = pl.safeY; pl.vx = 0f; pl.vy = 0f; pl.mp = null; pl.zip = null } }
-    fun burst(x: Float, y: Float, c: String, n: Int = 8) { repeat(n) { fx.add(Fx(x, y, ((Math.random() - .5) * 2.5).toFloat(), (-Math.random() * 2.5).toFloat(), 25, c)) } }
+    fun burst(x: Float, y: Float, c: String, n: Int = 8) { repeat(n) { fx.add(Fx(x, y, ((G.rnd() - .5) * 2.5).toFloat(), (-G.rnd() * 2.5).toFloat(), 25, c)) } }
 
     private val timers = ArrayList<Pair<Int, () -> Unit>>()
     fun delayed(frames: Int, f: () -> Unit) { timers.add(Pair(frame + frames, f)) }
@@ -545,7 +543,7 @@ class Game(private val ctx: Context) {
         for (i in items) {
             if (i.fall) {
                 i.vy = min(5f, i.vy + 0.25f); i.y += i.vy; if (i.t != 'q') i.x += i.drift
-                if (i.vy > 0 && solidAt(i.x + 5, i.y + i.h)) { i.y = Math.floor(((i.y + i.h) / T).toDouble()).toFloat() * T - i.h; i.fall = false }
+                if (i.vy > 0 && solidAt(i.x + 5, i.y + i.h)) { i.y = floor(((i.y + i.h) / T).toDouble()).toFloat() * T - i.h; i.fall = false }
             } else if (magnet && i.t == 'n') {
                 val dx = p.x + 5 - (i.x + 5); val dy = p.y + 13 - (i.y + 5)
                 if (dx * dx + dy * dy < 46f * 46f) { val d = sqrt(dx * dx + dy * dy).coerceAtLeast(1f); i.x += dx / d * 2.4f; i.y += dy / d * 2.4f }
@@ -632,14 +630,14 @@ class Game(private val ctx: Context) {
     private fun genEndless(b: B, upTo: Int) {
         while (genX < upTo) {
             val diff = min(1f, genX / 1500f)
-            val r = Math.random()
-            val len = 6 + (Math.random() * 9).toInt()
-            val top = (genTop + listOf(-1, 0, 0, 1)[(Math.random() * 4).toInt()]).coerceIn(12, 14)
+            val r = G.rnd()
+            val len = 6 + (G.rnd() * 9).toInt()
+            val top = (genTop + listOf(-1, 0, 0, 1)[(G.rnd() * 4).toInt()]).coerceIn(12, 14)
             val x0 = genX; val x1 = min(cols - 1, genX + len)
             b.G(x0, x1, top)
             when {
                 r < 0.25 -> b.N(x0 + 2, min(x1 - 1, x0 + 5), top - 2)
-                r < 0.45 -> { b.E(if (Math.random() < 0.6) 'g' else 'k', x0 + len / 2, top - 1, 2) }
+                r < 0.45 -> { b.E(if (G.rnd() < 0.6) 'g' else 'k', x0 + len / 2, top - 1, 2) }
                 r < 0.58 -> { val px = x0 + 2; b.P(px, min(x1, px + 3), top - 4); b.N(px, min(x1, px + 3), top - 5) }
                 r < 0.66 -> { b.P(x0 + len / 2, x0 + len / 2, top - 1, 'J'); b.N(x0 + len / 2 - 1, x0 + len / 2 + 1, top - 8) }
                 r < 0.74 -> b.E('b', x0 + len / 2, top - 4, 3)
@@ -647,8 +645,8 @@ class Game(private val ctx: Context) {
                 r < 0.81 -> b.I('d', x0 + len / 2, top - 3)
             }
             genTop = top
-            val gap = if (Math.random() < 0.55 + diff * 0.2) 2 + (Math.random() * (1 + 2 * diff)).toInt() else 0
-            if (gap > 0 && Math.random() < 0.3) { for (k in 0 until gap) b.P(x1 + 1 + k, x1 + 1 + k, top, 'C') }
+            val gap = if (G.rnd() < 0.55 + diff * 0.2) 2 + (G.rnd() * (1 + 2 * diff)).toInt() else 0
+            if (gap > 0 && G.rnd() < 0.3) { for (k in 0 until gap) b.P(x1 + 1 + k, x1 + 1 + k, top, 'C') }
             genX = x1 + 1 + gap
         }
     }
@@ -662,8 +660,8 @@ class Game(private val ctx: Context) {
     }
 
     // ================= render =================
-    fun render(c: Canvas) {
-        G.c = c; c.setMatrix(null); c.scale(3f, 3f)
+    fun render(c: Cv = G.c) {
+        Plat.gfx.identity(); c.scale(3f, 3f)
         val inCut = state == "cut"
         val bgi = if (inCut) (Cuts.ALL[cutId]?.bg ?: 0) else LV.bg
         if (inCut) { camX = (frame * 0.4f) % 1200f; camY = max(0f, rows * T - H.toFloat()) }
@@ -706,7 +704,7 @@ class Game(private val ctx: Context) {
         if (state != "play" && state != "won" && state != "dead") Menu.draw(this)
     }
 
-    private fun drawPlayer(c: Canvas) {
+    private fun drawPlayer(c: Cv) {
         val p = pl
         if (p.y <= -500 || (p.inv > 0 && (frame / 4) % 2 == 1)) return
         var lk = "idle"; var ub = 0f; var face = p.face
@@ -986,15 +984,15 @@ class Game(private val ctx: Context) {
 
     fun goTitle() { if (endless || LVI < 0) { endless = false; loadLevel(0) }; show("title") }
 
-    fun changeLang(l: String) { lang = l; prefs.edit().putString("lang", l).apply(); Menu.layout(this) }
+    fun changeLang(l: String) { lang = l; st.putString("lang", l); Menu.layout(this) }
     fun play(i: Int) = startLevel(i)
     fun allEggs() = levels.indices.sumOf { savedEggs(it).size }
-    fun allStars() = levels.indices.sumOf { Integer.bitCount(stars(it)) }
+    fun allStars() = levels.indices.sumOf { stars(it).countOneBits() }
 
     fun buy(s: Skin): Boolean {
-        if (skinAvailable(s)) { skinId = s.id; prefs.edit().putString("skin", s.id).apply(); return true }
+        if (skinAvailable(s)) { skinId = s.id; st.putString("skin", s.id); return true }
         if (wallet < s.price) return false
-        wallet -= s.price; pI("wallet", wallet); addS("owned", s.id); skinId = s.id; prefs.edit().putString("skin", s.id).apply()
+        wallet -= s.price; pI("wallet", wallet); addS("owned", s.id); skinId = s.id; st.putString("skin", s.id)
         Sfx.tune(intArrayOf(659, 784, 1046), 90); vib(30); return true
     }
     fun buyUp(u: Upgrade): Boolean {

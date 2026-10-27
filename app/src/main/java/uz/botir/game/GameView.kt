@@ -19,7 +19,9 @@ import kotlin.math.min
 
 /** Hosts the game: fixed 60 Hz simulation, 3x pixel bitmap scaled to fit, on-screen touch controls. */
 class GameView(ctx: Context) : View(ctx), Choreographer.FrameCallback {
-    val game = Game(ctx)
+    private val font: Typeface = try { Typeface.createFromAsset(ctx.assets, "PressStart2P.ttf") } catch (_: Throwable) { Typeface.MONOSPACE }
+    init { AndroidPlatform.init(ctx, font) }
+    val game = Game()
     private val bmp: Bitmap = Bitmap.createBitmap(W * 3, H * 3, Bitmap.Config.ARGB_8888)
     private val bc = Canvas(bmp)
     private val blit = Paint().apply { isFilterBitmap = false; isAntiAlias = false }
@@ -30,13 +32,11 @@ class GameView(ctx: Context) : View(ctx), Choreographer.FrameCallback {
     private var last = 0L; private var acc = 0.0; private var running = false
     private var layoutVer = -1
     private val zoneOf = HashMap<Int, Char>()
-    private val font: Typeface = try { Typeface.createFromAsset(ctx.assets, "PressStart2P.ttf") } catch (_: Throwable) { Typeface.MONOSPACE }
-
     init {
-        G.font = font; isFocusable = true
+        isFocusable = true
         @Suppress("DEPRECATION")
         val vib = try { ctx.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator } catch (_: Throwable) { null }
-        game.vibrate = { ms ->
+        Plat.vibrate = { ms ->
             if (vib != null && vib.hasVibrator()) {
                 if (Build.VERSION.SDK_INT >= 26) vib.vibrate(VibrationEffect.createOneShot(ms, VibrationEffect.DEFAULT_AMPLITUDE))
                 else @Suppress("DEPRECATION") vib.vibrate(ms)
@@ -79,7 +79,7 @@ class GameView(ctx: Context) : View(ctx), Choreographer.FrameCallback {
 
     override fun onDraw(canvas: Canvas) {
         if (layoutVer != game.settingsVer) relayout(width, height)
-        game.render(bc)
+        AndroidPlatform.gfx.cv = bc; game.render()
         canvas.drawColor(Color.parseColor("#0f1631"))
         canvas.drawBitmap(bmp, null, dst, blit)
         paint.style = Paint.Style.STROKE; paint.strokeWidth = 6f; paint.color = Color.BLACK

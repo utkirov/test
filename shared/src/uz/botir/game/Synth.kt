@@ -1,23 +1,28 @@
 package uz.botir.game
 
-import android.media.AudioAttributes
-import android.media.AudioFormat
-import android.media.AudioTrack
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.exp
+import kotlin.math.floor
+import kotlin.math.ln
 import kotlin.math.pow
 import kotlin.math.sin
 
-/**
- * Background chiptune. Each song is rendered once into a looping PCM buffer
- * (square-wave melody, triangle bass, doira-style percussion) and streamed on a daemon thread.
- * All melodies are original, written in modes common in Uzbek music (hijaz, phrygian, pentatonic, 6/8 lazgi feel).
- */
+/** Song ids and the shared on/off switch. Playback is done by the platform's [Audio]. */
 object Music {
     const val TITLE = 0; const val MAHALLA = 1; const val CHORSU = 2; const val METRO = 3; const val ANHOR = 4
     const val TOWER = 5; const val BOSS = 6; const val SAMARKAND = 7; const val BUKHARA = 8; const val KHIVA = 9; const val ENDLESS = 10
+    var enabled = true
+        set(v) { field = v; try { Plat.audio.setMusicEnabled(v) } catch (_: Throwable) { } }
+    fun play(i: Int) { try { Plat.audio.music(i) } catch (_: Throwable) { } }
+}
 
-    private const val RATE = 22050
+/**
+ * Chiptune synthesizer shared by Android and Web. Melodies are original, written in modes
+ * common in Uzbek music (hijaz, phrygian, pentatonic, 6/8 lazgi feel).
+ */
+object Synth {
+    const val RATE = 22050
 
     private class Song(val sps: Float, val mel: String, val bass: String, val drums: String)
 
@@ -46,66 +51,40 @@ object Music {
             "C3 . G2 . C3 . G2 . F2 . C3 . F2 . C3 . G2 . D3 . G2 . D3 . C3 . G2 . C3 . . .", "D.t.DDt.")
     )
 
-    private val cache = HashMap<Int, ShortArray>()
-    @Volatile var enabled = true
-    @Volatile private var want = -1
-    @Volatile private var running = false
-    private var thread: Thread? = null
+    val songCount get() = SONGS.size
+    private val cache = HashMap<Int, FloatArray>()
 
-    fun play(i: Int) { want = i }
+    /** One loop of the song as mono float PCM (-1..1) at [RATE]. */
+    fun song(i: Int): FloatArray = cache.getOrPut(i) { render(SONGS[i]) }
 
-    fun start() {
-        if (running) return
-        running = true
-        thread = Thread({ loop() }, "botir-music").apply { isDaemon = true; start() }
-    }
-
-    fun stop() { running = false; try { thread?.join(400) } catch (_: Throwable) { }; thread = null }
-
-    private fun loop() {
-        var track: AudioTrack? = null
-        try {
-            val minBuf = AudioTrack.getMinBufferSize(RATE, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT).coerceAtLeast(4096)
-            track = AudioTrack.Builder()
-                .setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_GAME).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build())
-                .setAudioFormat(AudioFormat.Builder().setEncoding(AudioFormat.ENCODING_PCM_16BIT).setSampleRate(RATE).setChannelMask(AudioFormat.CHANNEL_OUT_MONO).build())
-                .setBufferSizeInBytes(minBuf * 2).setTransferMode(AudioTrack.MODE_STREAM).build()
-            track.play()
-            val chunk = ShortArray(1024); val silence = ShortArray(1024)
-            var cur = -1; var pos = 0
-            var fade = 0f
-            while (running) {
-                val w = want
-                if (w != cur) {
-                    if (fade > 0f) fade -= 0.08f
-                    if (fade <= 0f) { cur = w; pos = 0; fade = 0f }
-                } else if (fade < 1f) fade += 0.04f
-                val buf = if (cur in SONGS.indices) cache.getOrPut(cur) { render(SONGS[cur]) } else null
-                if (buf == null || !enabled) { track.write(silence, 0, silence.size); continue }
-                for (i in chunk.indices) { chunk[i] = (buf[pos] * fade).toInt().toShort(); pos++; if (pos >= buf.size) pos = 0 }
-                track.write(chunk, 0, chunk.size)
-            }
-        } catch (_: Throwable) {
-        } finally {
-            try { track?.stop() } catch (_: Throwable) { }
-            try { track?.release() } catch (_: Throwable) { }
+    /** A short effect as mono float PCM. type: 0 square, 1 triangle, 2 saw, 3 sine */
+    fun sfx(freq: Float, dur: Float, type: Int, vol: Float, slide: Float): FloatArray {
+        val n = (RATE * dur).toInt().coerceAtLeast(64)
+        val buf = FloatArray(n)
+        var phase = 0.0
+        val k = ln(slide.toDouble()) / n
+        for (i in 0 until n) {
+            val f = freq * exp(k * i)
+            phase += f / RATE
+            val ph = phase - floor(phase)
+            val s = when (type) { 1 -> 1 - 4 * abs(ph - 0.5); 2 -> 2 * ph - 1; 3 -> sin(2 * PI * ph); else -> if (ph < 0.5) 1.0 else -1.0 }
+            val env = (1.0 - i.toDouble() / n) * (if (i < 40) i / 40.0 else 1.0)
+            buf[i] = (s * env * vol).toFloat()
         }
+        return buf
     }
 
     private fun midi(tok: String): Int {
-        val pcs = mapOf('C' to 0, 'D' to 2, 'E' to 4, 'F' to 5, 'G' to 7, 'A' to 9, 'B' to 11)
-        var pc = pcs[tok[0]] ?: return 0
+        var pc = when (tok[0]) { 'C' -> 0; 'D' -> 2; 'E' -> 4; 'F' -> 5; 'G' -> 7; 'A' -> 9; 'B' -> 11; else -> return 0 }
         var i = 1
         while (i < tok.length && (tok[i] == '#' || tok[i] == 'b')) { pc += if (tok[i] == '#') 1 else -1; i++ }
-        val oct = tok.substring(i).toInt()
-        return 12 * (oct + 1) + pc
+        return 12 * (tok.substring(i).toInt() + 1) + pc
     }
 
     private fun toks(s: String) = s.split(' ').filter { it.isNotBlank() && it != "|" }
-
     private fun freq(m: Int) = 440.0 * 2.0.pow((m - 69) / 12.0)
 
-    private fun render(s: Song): ShortArray {
+    private fun render(s: Song): FloatArray {
         val mel = toks(s.mel); val bass = toks(s.bass)
         val steps = mel.size
         val sps = (RATE / s.sps).toInt()
@@ -113,7 +92,6 @@ object Music {
         val mix = FloatArray(n)
         voice(mix, mel, steps, sps, 0.16f, square = true)
         voice(mix, bass, steps, sps, 0.22f, square = false)
-        // drums
         var seed = 12345
         for (st in 0 until steps) {
             val d = s.drums[st % s.drums.length]
@@ -134,9 +112,8 @@ object Music {
                 mix[idx] += v.toFloat()
             }
         }
-        val out = ShortArray(n)
-        for (i in 0 until n) { val v = (mix[i] * 0.85f).coerceIn(-1f, 1f); out[i] = (v * 32767 * 0.55f).toInt().toShort() }
-        return out
+        for (i in 0 until n) mix[i] = (mix[i] * 0.85f).coerceIn(-1f, 1f) * 0.55f
+        return mix
     }
 
     private fun voice(mix: FloatArray, notes: List<String>, steps: Int, sps: Int, amp: Float, square: Boolean) {
@@ -154,8 +131,8 @@ object Music {
                 val t = i.toDouble() / RATE
                 val vib = if (square && t > 0.18) 1 + 0.006 * sin(2 * PI * 5.5 * t) else 1.0
                 ph += f * vib / RATE
-                val p = ph - Math.floor(ph)
-                val w = if (square) (if (p < 0.25) 1.0 else -1.0) * 0.8 else 1 - 4 * Math.abs(p - 0.5)
+                val p = ph - floor(ph)
+                val w = if (square) (if (p < 0.25) 1.0 else -1.0) * 0.8 else 1 - 4 * abs(p - 0.5)
                 val atk = (i / (RATE * 0.006)).coerceAtMost(1.0)
                 val rel = ((total - i) / (RATE * 0.03)).coerceAtMost(1.0)
                 val env = atk * rel * (0.65 + 0.35 * exp(-t * 6))

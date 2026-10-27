@@ -94,7 +94,7 @@ object Spr {
     fun enemyH(t: Char) = when (t) { 'z' -> 8f; 'g' -> 14f; 'k' -> 24f; 's' -> 22f; 'c' -> 22f; 'b' -> 8f; else -> 9f }
 
     fun person(xx: Float, yy: Float, body: String, hat: String, atlas: Boolean = false, scarf: Boolean = false, beard: Boolean = false, glasses: Boolean = false, arm: Int = 0, skin: String = "#e8ad7e") {
-        val x = Math.round(xx).toFloat(); val y = Math.round(yy).toFloat()
+        val x = G.round(xx); val y = G.round(yy)
         val l = arrayListOf(
             P(x + 2, y + 13, 2, 5, "#3a2c24"), P(x + 6, y + 13, 2, 5, "#3a2c24"),
             P(x + 1, y + 6, 8, 8, body) { if (atlas) { val cs = arrayOf("#d8373b", "#f4c430", "#2e9b6b", "#2457c5"); for (i in 0 until 4) px(cs[i], x + 1 + i * 2, y + 6, 2, 8) } },

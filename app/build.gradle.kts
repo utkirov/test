@@ -34,6 +34,9 @@ android {
             signingConfig = if (ksPath != null) signingConfigs.getByName("upload") else signingConfigs.getByName("debug")
         }
     }
+    sourceSets {
+        getByName("main") { java.srcDirs("src/main/java", "../shared/src") }
+    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17

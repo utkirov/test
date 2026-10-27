@@ -58,10 +58,17 @@ object Menu {
                 btn(g, 40, 220, 100, 16, L("ЕЩЁ РАЗ", "YANA"), style = 1) { g.play(g.LVI) }
                 btn(g, 40, 242, 100, 16, L("МЕНЮ", "MENYU"), style = 1) { g.goTitle() }
             }
-            "credits" -> btn(g, 40, 240, 100, 18, L("МЕНЮ", "MENYU")) { g.goTitle() }
+            "credits" -> {
+                Plat.share?.let { sh -> btn(g, 30, 216, 120, 18, L("ПОДЕЛИТЬСЯ", "ULASHISH"), style = 1) {
+                    sh(L("Я прошёл игру Botir и собрал ${g.allStars()} звёзд! Сможешь лучше?", "Men Botir o'yinini tugatdim va ${g.allStars()} ta yulduz yig'dim! Sen yaxshiroq qila olasanmi?")) } }
+                btn(g, 40, 240, 100, 18, L("МЕНЮ", "MENYU")) { g.goTitle() }
+            }
             "endover" -> {
                 btn(g, 40, 200, 100, 20, L("ЕЩЁ ЗАБЕГ", "YANA YUGUR")) { g.startEndless() }
                 btn(g, 40, 226, 100, 18, L("МЕНЮ", "MENYU"), style = 1) { g.goTitle() }
+                Plat.share?.let { sh -> btn(g, 30, 250, 120, 16, L("ПОДЕЛИТЬСЯ", "ULASHISH"), style = 1) {
+                    val m = ((g.pl.x - g.runStart) / T).toInt().coerceAtLeast(0)
+                    sh(L("Я пробежал $m м в игре Botir! Мой рекорд — ${g.best} м. Сможешь больше?", "Men Botir o'yinida $m m yugurdim! Rekordim — ${g.best} m. Sen ko'proq yugura olasanmi?")) } }
             }
             "shop" -> {
                 btn(g, 10, 30, 78, 16, L("СКИНЫ", "LIBOSLAR"), style = if (g.shopTab == 0) 3 else 1) { g.shopTab = 0; layout(g) }
@@ -194,7 +201,7 @@ object Menu {
                 stars3(g, g.stars(g.introI), W / 2f, 42f, false)
                 var y = para(L(l.intro[0], l.intro[1]), 56f)
                 y = para(L(l.mech[0], l.mech[1]), y + 6, "#86c5ef")
-                txt("* ${g.savedEggs(g.introI).size}/${g.eggTotals[g.introI]}  " + L("Звёзды: пройти, все ноны, все пасхалки", "Yulduzlar: o'tish, barcha non, barcha sirlar"), W / 2f, y + 6, "#a8b3d9", SM, 1)
+                para("* ${g.savedEggs(g.introI).size}/${g.eggTotals[g.introI]}. " + L("Звёзды: пройти, все ноны, все пасхалки", "Yulduzlar: o'tish, barcha non, barcha sirlar"), y + 6)
             }
             "pause" -> {
                 txt(L("Пауза", "Pauza"), W / 2f, 14f, "#f4c430", BIG, 1)
