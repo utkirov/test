@@ -30,25 +30,22 @@ object Spr {
     private fun legsFor(k: String) = LEGS[k] ?: LEGS[if (k == "dance") "idle" else "idle"]!!
     private fun armKey(k: String) = when (k) { "run1" -> "idle"; "dance" -> "jump"; else -> k }
 
-    fun hero(lk: String, gold: Boolean): List<Part> {
-        val doppi = if (gold) "#f4c430" else "#15151c"; val dw = if (gold) "#b8860b" else "#f5f5f5"
-        val skin = "#e8ad7e"; val skinS = "#bf8255"; val hair = "#1c1410"; val body = "#f08a24"
+    fun hero(lk: String, gold: Boolean, sk: Skin = Skins.ALL[0], sink: Int = 0): List<Part> {
+        val doppi = if (gold) "#f4c430" else sk.doppi; val dw = if (gold) "#b8860b" else sk.dw
+        val skin = "#e8ad7e"; val skinS = "#bf8255"; val hair = "#1c1410"; val body = sk.body
         val out = ArrayList<Part>()
         val legKey = if (lk == "dance") "idle" else lk
         for (l in legsFor(legKey)) {
-            if (l[4] == 0) out.add(P(l[0], l[1], l[2], l[3], "#3561a8"))
-            else out.add(P(l[0], l[1], l[2], l[3], "#f5f5f5") { p -> px("#e03a3e", p.x + 1, p.y, p.w - 2, 1) })
+            if (l[1] + l[3] > 31 - sink && sink > 0) { val h = (31 - sink - l[1]).coerceAtLeast(0); if (h > 0) out.add(P(l[0], l[1], l[2], h, if (l[4] == 0) sk.pants else sk.shoe)); continue }
+            if (l[4] == 0) out.add(P(l[0], l[1], l[2], l[3], sk.pants))
+            else out.add(P(l[0], l[1], l[2], l[3], sk.shoe) { p -> px(sk.stripe, p.x + 1, p.y, p.w - 2, 1) })
         }
-        out.add(P(3, 15, 4, 9, "#2e9b6b", true) { px("#1f6e4b", 3, 19, 4, 1); px("#f4c430", 4, 20, 1, 1) })
+        if (sk.pack) out.add(P(3, 15, 4, 9, "#2e9b6b", true) { px("#1f6e4b", 3, 19, 4, 1); px("#f4c430", 4, 20, 1, 1) })
         val ak = armKey(lk)
         val b = ARMS_B[ak]!!
         b.forEachIndexed { i, r -> out.add(P(r[0], r[1], r[2], r[3], if (i == b.size - 1) skin else body, true)) }
-        out.add(P(7, 15, 10, 10, body, true) {
-            val ik = arrayOf("#5b2a86", "#f5f0e6", "#2457c5")
-            for (rr in 0 until 3) for (i in 0 until 10) px(ik[(i + rr * 2) % 3], 7 + i, 18 + rr)
-            px("#c96a12", 9, 22, 6, 2); px("#ffffff", 12, 15, 1, 3); px("#ffffff", 14, 15, 1, 3); px("#33000000", 7, 15, 1, 10)
-        })
-        out.add(P(6, 13, 6, 3, body, true))
+        out.add(P(7, 15, 10, 10, body, true, sk.torso))
+        if (sk.hood) out.add(P(6, 13, 6, 3, body, true))
         out.add(P(8, 5, 9, 9, skin, true) {
             px(hair, 8, 5, 3, 6); px(hair, 8, 11, 1, 2); px(skinS, 10, 9, 2, 2); px("#000000", 14, 8, 2, 2); px("#ffffff", 14, 8, 1, 1)
             px(hair, 13, 7, 3, 1); px("#8a3324", 15, 12, 2, 1); px("#e58a7a", 13, 11, 1, 1); px(skinS, 9, 13, 8, 1); px(hair, 11, 5, 4, 1)
@@ -59,6 +56,7 @@ object Spr {
             for (pt in arrayOf(8 to 4, 9 to 3, 9 to 4, 12 to 4, 13 to 3, 13 to 4, 16 to 4, 15 to 3, 11 to 1, 12 to 2, 14 to 1)) px(dw, pt.first, pt.second)
             px("#59000000", 7, 5, 11, 1)
         })
+        if (sk.season == Season.WINTER && !gold) out.add(P(11, -2, 3, 3, "#ffffff", true))
         val f = ARMS_F[ak]!!
         f.forEachIndexed { i, r -> out.add(P(r[0], r[1], r[2], r[3], if (i == f.size - 1) skin else body, true)) }
         return out
@@ -85,12 +83,15 @@ object Spr {
         'b' -> listOf(
             P(1, 3, 9, 4, "#8a93a6") { px("#5f6b80", 3, 4, 5, 1) }, P(8, 1, 4, 3, "#6b7690") { px("#ff7a00", 10, 2); px("#2fb39a", 8, 3, 3, 1) },
             P(12, 2, 2, 1, "#e8b25a"), P(3, if (f == 1) 0 else 5, 5, 2, "#a7b0c2"))
+        'z' -> listOf( // lizard (kaltakesak)
+            P(0, 4, 4, 1, "#7a8a3a"), P(3, 3, 9, 4, "#9aaa4a") { px("#6b7a2a", 5, 4, 1, 1); px("#6b7a2a", 8, 4, 1, 1) },
+            P(11, 2, 5, 4, "#9aaa4a") { px("#000000", 14, 3) }, P(4, 7 - f, 2, 1, "#6b7a2a"), P(9, 6 + f, 2, 2, "#6b7a2a"))
         else -> listOf( // humo bird
             P(0, if (f == 1) 0 else 5, 7, 3, "#f4c430"), P(10, if (f == 1) 0 else 5, 7, 3, "#f4c430"),
             P(5, 3, 8, 5, "#e6a23c") { px("#000000", 11, 4) }, P(13, 4, 3, 2, "#d8373b"), P(2, 5, 4, 2, "#f4c430"))
     }
 
-    fun enemyH(t: Char) = when (t) { 'g' -> 14f; 'k' -> 24f; 's' -> 22f; 'c' -> 22f; 'b' -> 8f; else -> 9f }
+    fun enemyH(t: Char) = when (t) { 'z' -> 8f; 'g' -> 14f; 'k' -> 24f; 's' -> 22f; 'c' -> 22f; 'b' -> 8f; else -> 9f }
 
     fun person(xx: Float, yy: Float, body: String, hat: String, atlas: Boolean = false, scarf: Boolean = false, beard: Boolean = false, glasses: Boolean = false, arm: Int = 0, skin: String = "#e8ad7e") {
         val x = Math.round(xx).toFloat(); val y = Math.round(yy).toFloat()
@@ -108,11 +109,15 @@ object Spr {
     val DOP = arrayOf("...KKKKKK...", "..KGGgGGGK..", ".KGgGGGgGGK.", "KGGGGgGGGGGK", "KgGGgGGgGGgK", "KKKKKKKKKKKK")
     val HRT = arrayOf(".KK.KK.", "KRRKRRK", "KRRRRRK", ".KRRRK.", "..KRK..", "...K...")
     val QOZ = arrayOf("..KKKKKKKKKK..", ".KOOOOOOOOOOK.", "KKKKKKKKKKKKKK", "KDDDDDDDDDDDDK", "KDdDDDDDDDDdDK", ".KDDDDDDDDDDK.", "..KKKKKKKKKK..")
+    val KAF = arrayOf("KKKKK.........", "KGGGK.........", "KGgGKKKKKKKKKK", "KGGGGGGGGGGGGK", "KKKKKKKKKKKKKK")
     val SX = mapOf(
         "sabzi" to arrayOf("...GG.", "..GG..", ".KKK..", "KYYYK.", "KYYK..", "KYK...", "KK...."),
         "jeton" to arrayOf(".KKKK.", "KCCCCK", "KCkkCK", "KCkkCK", "KCCCCK", ".KKKK."),
-        "foto" to arrayOf("..KK..", "KKKKKK", "KXXXXK", "KX..XK", "KXXXXK", "KKKKKK"))
+        "foto" to arrayOf("..KK..", "KKKKKK", "KXXXXK", "KX..XK", "KXXXXK", "KKKKKK"),
+        "samnon" to arrayOf(".KKKKKK.", "KNNNNNNK", "KNLnnLNK", "KNnLLnNK", "KNLnnLNK", "KNNNNNNK", ".KKKKKK."),
+        "qogoz" to arrayOf("KKKKKK", "KWWWWK", "KWkkWK", "KWWWWK", "KWkkWK", "KKKKKK"),
+        "uzuk" to arrayOf("..KK..", ".KRRK.", "KGKKGK", "KG..GK", "KGKKGK", ".KGGK."))
     val PAL = mapOf('N' to "#d9963f", 'n' to "#8a5422", 'L' to "#f0c27a", 'Q' to "#e8b25a", 'q' to "#a8702a", 'G' to "#f4c430", 'g' to "#b8860b",
-        'O' to "#55556a", 'D' to "#2b2b33", 'd' to "#55556a", 'Y' to "#f4a722", 'C' to "#c98a3a", 'k' to "#8a5422", 'X' to "#3a3f4a", 'R' to "#e24b4a")
+        'O' to "#55556a", 'D' to "#2b2b33", 'd' to "#55556a", 'Y' to "#f4a722", 'C' to "#c98a3a", 'k' to "#8a5422", 'X' to "#3a3f4a", 'R' to "#e24b4a", 'W' to "#f5f0e6")
     fun pal(vararg over: Pair<Char, String>): Map<Char, String> { val m = HashMap(PAL); for (o in over) m[o.first] = o.second; return m }
 }

@@ -9,6 +9,9 @@ import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
 import android.graphics.Typeface
+import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
 import android.view.Choreographer
 import android.view.MotionEvent
 import android.view.View
@@ -25,10 +28,21 @@ class GameView(ctx: Context) : View(ctx), Choreographer.FrameCallback {
     private var ctrlTop = 0f; private var r = 60f
     private var cxL = 0f; private var cxR = 0f; private var cxJ = 0f; private var cy = 0f
     private var last = 0L; private var acc = 0.0; private var running = false
+    private var layoutVer = -1
     private val zoneOf = HashMap<Int, Char>()
     private val font: Typeface = try { Typeface.createFromAsset(ctx.assets, "PressStart2P.ttf") } catch (_: Throwable) { Typeface.MONOSPACE }
 
-    init { G.font = font; isFocusable = true }
+    init {
+        G.font = font; isFocusable = true
+        @Suppress("DEPRECATION")
+        val vib = try { ctx.getSystemService(Context.VIBRATOR_SERVICE) as? Vibrator } catch (_: Throwable) { null }
+        game.vibrate = { ms ->
+            if (vib != null && vib.hasVibrator()) {
+                if (Build.VERSION.SDK_INT >= 26) vib.vibrate(VibrationEffect.createOneShot(ms, VibrationEffect.DEFAULT_AMPLITUDE))
+                else @Suppress("DEPRECATION") vib.vibrate(ms)
+            }
+        }
+    }
 
     fun start() { if (!running) { running = true; last = 0L; Choreographer.getInstance().postFrameCallback(this) } }
     fun stop() { running = false; Choreographer.getInstance().removeFrameCallback(this) }
@@ -43,8 +57,13 @@ class GameView(ctx: Context) : View(ctx), Choreographer.FrameCallback {
         Choreographer.getInstance().postFrameCallback(this)
     }
 
-    override fun onSizeChanged(w: Int, h: Int, ow: Int, oh: Int) {
-        val ctrlH = (h * 0.24f).coerceIn(220f, 520f)
+    override fun onSizeChanged(w: Int, h: Int, ow: Int, oh: Int) { relayout(w, h) }
+
+    private fun relayout(w: Int, h: Int) {
+        if (w == 0 || h == 0) return
+        layoutVer = game.settingsVer
+        val scale = arrayOf(0.82f, 1f, 1.2f)[game.btnSize]
+        val ctrlH = (h * 0.24f * scale).coerceIn(200f, 600f)
         val avail = h - ctrlH
         val s = min(w / W.toFloat(), avail / H.toFloat())
         val gw = W * s; val gh = H * s
@@ -52,12 +71,14 @@ class GameView(ctx: Context) : View(ctx), Choreographer.FrameCallback {
         dst.set(left, top, left + gw, top + gh)
         ctrlTop = top + gh
         val ch = h - ctrlTop
-        r = min(w * 0.11f, ch * 0.32f)
+        r = min(w * 0.11f * scale, ch * 0.32f)
         cy = ctrlTop + ch * 0.5f
-        cxL = r * 1.35f; cxR = cxL + r * 2.45f; cxJ = w - r * 1.6f
+        if (!game.lefty) { cxL = r * 1.35f; cxR = cxL + r * 2.45f; cxJ = w - r * 1.6f }
+        else { cxJ = r * 1.6f; cxR = w - r * 1.35f; cxL = cxR - r * 2.45f }
     }
 
     override fun onDraw(canvas: Canvas) {
+        if (layoutVer != game.settingsVer) relayout(width, height)
         game.render(bc)
         canvas.drawColor(Color.parseColor("#0f1631"))
         canvas.drawBitmap(bmp, null, dst, blit)
@@ -93,11 +114,9 @@ class GameView(ctx: Context) : View(ctx), Choreographer.FrameCallback {
 
     private fun zone(x: Float, y: Float): Char {
         if (y < ctrlTop) return ' '
-        return when {
-            x < (cxL + cxR) / 2 -> 'L'
-            x < width * 0.55f -> 'R'
-            else -> 'J'
-        }
+        val mid = (cxL + cxR) / 2
+        return if (!game.lefty) when { x < mid -> 'L'; x < width * 0.55f -> 'R'; else -> 'J' }
+        else when { x < width * 0.45f -> 'J'; x < mid -> 'L'; else -> 'R' }
     }
 
     private fun refreshKeys() {
@@ -122,7 +141,7 @@ class GameView(ctx: Context) : View(ctx), Choreographer.FrameCallback {
                 for (i in 0 until e.pointerCount) {
                     val id = e.getPointerId(i); val old = zoneOf[id] ?: continue
                     val z = zone(e.getX(i), e.getY(i))
-                    if (z != ' ' && z != old && old != 'J' && z != 'J') zoneOf[id] = z   // slide between left/right
+                    if (z != ' ' && z != old && old != 'J' && z != 'J') zoneOf[id] = z
                 }
                 refreshKeys()
             }
@@ -131,4 +150,7 @@ class GameView(ctx: Context) : View(ctx), Choreographer.FrameCallback {
         }
         return true
     }
+
+    /** Off-screen render used for store screenshots. */
+    fun renderTo(target: Bitmap) { val c = Canvas(target); layout(0, 0, target.width, target.height); relayout(target.width, target.height); draw(c) }
 }

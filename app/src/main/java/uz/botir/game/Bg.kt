@@ -115,5 +115,67 @@ object Bg {
         }
     }
 
+    fun draw(g: Game, i: Int) {
+        when (i) { 0 -> city(g); 1 -> bazaar(g); 2 -> metro(g); 3 -> park(g); 4 -> tower(g); 5 -> sky(g); 6 -> samarkand(g); 7 -> bukhara(g); else -> khiva(g) }
+    }
+
+    private fun minaret(x: Int, top: Int, bot: Int, w: Int, body: String, band: String) {
+        px(body, x, top, w, bot - top); var y = top + 6
+        while (y < bot) { px(band, x, y, w, 2); y += 9 }
+        px(band, x - 2, top - 4, w + 4, 4); px(body, x + 1, top - 10, w - 2, 6)
+    }
+
+    fun samarkand(g: Game) {
+        val cx = g.camX
+        px("#7fc4e8", 0, 0, W, H); px("#a8dcf0", 0, 100, W, 60); px("#e9d3a6", 0, 196, W, 80)
+        // Registan: three madrasa facades with portals, domes and minarets
+        for (i in -1 until 3) {
+            val bx = (i * 150 - m(cx * 0.2f, 150f)).roundToInt()
+            px("#d9b98a", bx, 120, 120, 80)
+            for (k in 0 until 3) {
+                val px0 = bx + 6 + k * 38
+                px("#c9a77a", px0, 96, 32, 104); px("#2e6fd8", px0 + 4, 100, 24, 6)
+                G.halfDisc("#1f4ea8", px0 + 16, 128, 10); px("#1f4ea8", px0 + 6, 128, 20, 40); px("#2fb3c9", px0 + 8, 130, 16, 2)
+                for (q in 0 until 4) px("#2fb3c9", px0 + 2, 108 + q * 22, 2, 8)
+                if (k == 1) { G.halfDisc("#2fb3c9", px0 + 16, 94, 14); px("#f4c430", px0 + 15, 76, 2, 6) }
+            }
+            minaret(bx + 1, 70, 200, 6, "#c9a77a", "#2e6fd8"); minaret(bx + 113, 70, 200, 6, "#c9a77a", "#2e6fd8")
+        }
+        for (i in -1 until 6) { val tx = (i * 40 - m(cx * 0.45f, 40f)).roundToInt(); px("#6b4a2a", tx + 18, 182, 3, 20); G.circle("#3f8a33", tx + 19, 180, 9) }
+    }
+
+    fun bukhara(g: Game) {
+        val cx = g.camX
+        px("#f6d9a0", 0, 0, W, H); px("#f9e6bf", 0, 90, W, 60)
+        G.circle("#fff1c0", 140, 40, 12)
+        // dunes
+        for (i in -1 until 4) { val dx = (i * 110 - m(cx * 0.1f, 110f)).roundToInt(); G.halfDisc("#e8c48a", dx + 55, 200, 60) }
+        // Kalon minaret + Poi-Kalon dome
+        for (i in -1 until 2) {
+            val bx = (i * 260 - m(cx * 0.2f, 260f)).roundToInt() + 60
+            px("#d2a86e", bx, 70, 14, 130); var y = 76; while (y < 200) { px("#b8894e", bx, y, 14, 2); y += 7 }
+            px("#c99a5a", bx - 3, 64, 20, 8); px("#d2a86e", bx + 2, 56, 10, 8)
+            G.halfDisc("#2fb3c9", bx + 70, 150, 22); px("#d2a86e", bx + 44, 150, 52, 50); px("#b8894e", bx + 62, 166, 16, 34)
+        }
+        for (i in -1 until 5) { val hx = (i * 70 - m(cx * 0.4f, 70f)).roundToInt(); px("#d9b98a", hx, 170, 50, 40); G.halfDisc("#c9a77a", hx + 25, 170, 12); px("#8b6b4a", hx + 20, 186, 10, 14) }
+    }
+
+    fun khiva(g: Game) {
+        val cx = g.camX
+        px("#f4b06a", 0, 0, W, 90); px("#f7c88a", 0, 90, W, 80); px("#e0b07a", 0, 170, W, 100)
+        // Ichan-Kala crenellated wall
+        val wy = 160
+        px("#c48e58", 0, wy, W, 60)
+        for (i in -1 until 20) { val x = (i * 12 - m(cx * 0.35f, 12f)).roundToInt(); px("#c48e58", x, wy - 6, 7, 6); G.halfDisc("#b47e48", x + 3, wy - 6, 3) }
+        for (i in -1 until 3) {
+            val bx = (i * 200 - m(cx * 0.2f, 200f)).roundToInt() + 30
+            // Kalta-Minor: wide unfinished turquoise-striped tower
+            px("#2fb3c9", bx, 92, 34, 70); var y = 96; while (y < 162) { px("#1f8aa0", bx, y, 34, 3); px("#f4c430", bx, y + 6, 34, 1); y += 12 }
+            px("#1f8aa0", bx - 2, 88, 38, 5)
+            // Islam-Khodja: tall slim minaret
+            minaret(bx + 110, 30, 162, 8, "#d2a86e", "#2fb3c9")
+        }
+    }
+
     @Suppress("unused") fun label(s: String, x: Float, y: Float) = txt(s, x, y, "#f4c430", SM)
 }

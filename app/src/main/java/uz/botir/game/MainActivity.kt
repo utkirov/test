@@ -10,6 +10,7 @@ import android.view.WindowManager
 
 class MainActivity : Activity() {
     private lateinit var view: GameView
+    private var tool = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -17,6 +18,17 @@ class MainActivity : Activity() {
         view = GameView(this)
         setContentView(view)
         hideBars()
+        if (Build.VERSION.SDK_INT >= 33) {
+            onBackInvokedDispatcher.registerOnBackInvokedCallback(android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT) {
+                if (!view.game.back()) finish()
+            }
+        }
+        // Developer modes used by the CI emulator: self-test and store screenshots.
+        when (intent?.getStringExtra("mode")) {
+            "selftest" -> { tool = true; Tools.selfTest(this, view) }
+            "promo" -> { tool = true; Tools.promo(this, view) }
+            "play" -> view.game.play(0)
+        }
     }
 
     @Suppress("DEPRECATION")
@@ -35,13 +47,13 @@ class MainActivity : Activity() {
 
     override fun onWindowFocusChanged(hasFocus: Boolean) { super.onWindowFocusChanged(hasFocus); if (hasFocus) hideBars() }
 
-    override fun onResume() { super.onResume(); view.start() }
+    override fun onResume() { super.onResume(); if (!tool) { view.start(); Music.start() } }
 
     override fun onPause() {
         super.onPause()
         if (view.game.state == "play") view.game.show("pause")
         view.game.kL = false; view.game.kR = false; view.game.kJ = false
-        view.stop()
+        view.stop(); Music.stop()
     }
 
     override fun onDestroy() { super.onDestroy(); Sfx.release() }
