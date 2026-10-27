@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Pixel doppi (Uzbek skullcap) on an orange tile -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp"
+    android:viewportWidth="18" android:viewportHeight="18">
+    <path android:fillColor="#F08A24" android:pathData="M0,0h18v18h-18z"/>
+    <path android:fillColor="#140C08" android:pathData="M4,5h10v1h1v2h1v4h-14v-4h1v-2h1z"/>
+    <path android:fillColor="#15151C" android:pathData="M5,6h8v1h1v2h1v2h-12v-2h1v-2h1z"/>
+    <path android:fillColor="#F5F5F5" android:pathData="M6,8h1v1h-1zM9,7h1v1h-1zM12,8h1v1h-1zM5,10h1v1h-1zM8,10h2v1h-2zM12,10h1v1h-1z"/>
+    <path android:fillColor="#F4C430" android:pathData="M3,13h12v1h-12z"/>
+</vector>
