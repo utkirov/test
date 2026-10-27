@@ -120,7 +120,7 @@ object Tools {
                 synchronized(g) {
                     G.c = c; c.scale(16f, 16f)
                     G.px("#2e6fd8", 0, 0, 32, 32); G.circle("#f08a24", 16, 17, 14)
-                    c.save(); c.translate(4f, 1f); G.drawParts(Spr.hero("jump", false, Skins.ALL[0]), 0f); c.restore()
+                    c.save(); c.translate(6f, 4f); c.scale(0.84f, 0.84f); G.drawParts(Spr.hero("jump", false, Skins.ALL[0]), 0f); c.restore()
                 }
                 save(icon, File(dir, "icon_512.png"))
             } catch (t: Throwable) { Log.e(TAG, "icon", t) }
@@ -133,11 +133,11 @@ object Tools {
                     G.px("#4f9a3a", 0, 214, 560, 6); G.px("#7cc44a", 0, 214, 560, 2); G.px("#b9773d", 0, 220, 560, 50)
                     for (k in 0 until 6) G.spr(Spr.NON, 40 + k * 16, 150 - (k % 2) * 8, Spr.PAL)
                     c.save(); c.translate(60f, 136f); c.scale(2.5f, 2.5f); G.drawParts(Spr.hero("jump", false, Skins.ALL[0]), 0f); c.restore()
-                    G.px("#d80f1631", 250, 40, 290, 120)
+                    G.px("#140c08", 248, 38, 294, 124); G.px("#1d2b53", 250, 40, 290, 120); G.px("#f4c430", 250, 40, 290, 3)
                     G.txt("BOTIR", 395f, 56f, "#f4c430", 32f, 1)
                     G.txt("O'zbekiston sarguzashtlari", 395f, 102f, "#fff1e8", 8f, 1)
                     G.txt("Приключения в Узбекистане", 395f, 120f, "#a8b3d9", 8f, 1)
-                    G.spr(Spr.QOZ, 380f, 140f, Spr.pal('O' to "#f0c27a"))
+                    c.save(); c.translate(360f, 132f); c.scale(2f, 2f); G.spr(Spr.QOZ, 0f, 0f, Spr.pal('O' to "#f0c27a")); G.spr(Spr.KAF, 18f, 2f, Spr.PAL); c.restore()
                 }
                 save(fg, File(dir, "feature_1024x500.png"))
             } catch (t: Throwable) { Log.e(TAG, "feature", t) }
