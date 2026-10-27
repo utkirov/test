@@ -74,6 +74,67 @@ object Synth {
         return buf
     }
 
+    // ---------- layered sound effects ----------
+    private class Mix(dur: Float) {
+        val buf = FloatArray((RATE * dur).toInt().coerceAtLeast(64))
+        var seed = 777
+        fun noise(): Double { seed = seed * 1103515245 + 12345; return ((seed shr 16) and 0x7fff) / 16384.0 - 1.0 }
+        /** Tone from f0 to f1 (exponential), starting at t0 for d seconds. wave: 0 square(duty), 1 triangle, 2 saw, 3 sine */
+        fun tone(t0: Float, d: Float, f0: Float, f1: Float, vol: Float, wave: Int = 0, duty: Float = 0.5f, vib: Float = 0f, atk: Float = 0.004f, decay: Float = 0f) {
+            val s0 = (t0 * RATE).toInt(); val n = (d * RATE).toInt(); var ph = 0.0
+            val k = ln((f1 / f0).toDouble()) / n
+            for (i in 0 until n) {
+                val idx = s0 + i; if (idx >= buf.size) break
+                val t = i.toDouble() / RATE
+                val f = f0 * exp(k * i) * (1 + vib * sin(2 * PI * 7 * t))
+                ph += f / RATE; val p = ph - floor(ph)
+                val w = when (wave) { 1 -> 1 - 4 * abs(p - 0.5); 2 -> 2 * p - 1; 3 -> sin(2 * PI * p); else -> if (p < duty) 1.0 else -1.0 }
+                val a = (t / atk).coerceAtMost(1.0) * (if (decay > 0) exp(-t * decay) else (1 - i.toDouble() / n))
+                buf[idx] += (w * a * vol).toFloat()
+            }
+        }
+        /** Noise burst; lp in 0..1 = smoothing (higher → darker). */
+        fun hiss(t0: Float, d: Float, vol: Float, lp: Float = 0.5f, decay: Float = 20f) {
+            val s0 = (t0 * RATE).toInt(); val n = (d * RATE).toInt(); var y = 0.0
+            for (i in 0 until n) {
+                val idx = s0 + i; if (idx >= buf.size) break
+                val t = i.toDouble() / RATE
+                y = y * lp + noise() * (1 - lp)
+                buf[idx] += (y * vol * exp(-t * decay) * (if (lp > 0.6f) 2.0 else 1.0)).toFloat()
+            }
+        }
+        fun out(): FloatArray { for (i in buf.indices) buf[i] = buf[i].coerceIn(-1f, 1f); return buf }
+    }
+
+    /** Named effects. Unknown names fall back to a short blip. */
+    fun fx(name: String): FloatArray = when (name) {
+        "jump" -> Mix(0.18f).apply { tone(0f, 0.16f, 260f, 720f, 0.22f, 0, 0.25f); hiss(0f, 0.05f, 0.05f, 0.3f, 60f) }.out()
+        "djump" -> Mix(0.22f).apply { tone(0f, 0.18f, 520f, 1300f, 0.18f, 0, 0.125f); tone(0.05f, 0.15f, 1040f, 1560f, 0.08f, 1) }.out()
+        "coin" -> Mix(0.22f).apply { tone(0f, 0.06f, 988f, 988f, 0.18f, 0, 0.25f, decay = 8f); tone(0.055f, 0.16f, 1319f, 1319f, 0.2f, 0, 0.25f, decay = 14f) }.out()
+        "stomp" -> Mix(0.25f).apply { tone(0f, 0.18f, 180f, 55f, 0.4f, 3, decay = 14f); hiss(0f, 0.08f, 0.25f, 0.55f, 40f); tone(0.02f, 0.08f, 900f, 500f, 0.07f, 0, 0.25f) }.out()
+        "hurt" -> Mix(0.4f).apply { tone(0f, 0.36f, 420f, 110f, 0.22f, 2, vib = 0.06f); hiss(0f, 0.12f, 0.12f, 0.4f, 25f) }.out()
+        "power" -> Mix(0.6f).apply { val n = intArrayOf(523, 659, 784, 1047, 1319, 1568); n.forEachIndexed { i, f -> tone(i * 0.07f, 0.16f, f.toFloat(), f.toFloat(), 0.16f, 0, 0.25f, decay = 10f) }; tone(0f, 0.5f, 262f, 262f, 0.08f, 1) }.out()
+        "heal" -> Mix(0.45f).apply { tone(0f, 0.4f, 523f, 523f, 0.12f, 1, decay = 5f); tone(0.06f, 0.36f, 659f, 659f, 0.12f, 1, decay = 5f); tone(0.12f, 0.3f, 784f, 784f, 0.12f, 1, decay = 5f) }.out()
+        "spring" -> Mix(0.45f).apply { tone(0f, 0.42f, 180f, 640f, 0.3f, 3, vib = 0.18f, decay = 5f); tone(0f, 0.1f, 90f, 60f, 0.25f, 3, decay = 20f) }.out()
+        "splash" -> Mix(0.6f).apply { hiss(0f, 0.5f, 0.45f, 0.75f, 7f); listOf(0.12f, 0.2f, 0.31f).forEachIndexed { i, t -> tone(t, 0.05f, 600f + i * 200, 1100f + i * 250, 0.07f, 3) } }.out()
+        "bubble" -> Mix(0.12f).apply { tone(0f, 0.1f, 500f, 1200f, 0.08f, 3) }.out()
+        "crack" -> Mix(0.3f).apply { hiss(0f, 0.04f, 0.4f, 0.2f, 80f); hiss(0.07f, 0.05f, 0.35f, 0.3f, 70f); tone(0f, 0.2f, 140f, 70f, 0.2f, 2, decay = 18f) }.out()
+        "land" -> Mix(0.1f).apply { tone(0f, 0.08f, 120f, 60f, 0.25f, 3, decay = 35f); hiss(0f, 0.05f, 0.08f, 0.7f, 60f) }.out()
+        "zip" -> Mix(0.5f).apply { tone(0f, 0.45f, 400f, 900f, 0.08f, 2, vib = 0.03f); hiss(0f, 0.45f, 0.06f, 0.2f, 3f) }.out()
+        "egg" -> Mix(0.8f).apply { val n = intArrayOf(659, 784, 988, 1319); n.forEachIndexed { i, f -> tone(i * 0.1f, 0.3f, f.toFloat(), f.toFloat(), 0.14f, 0, 0.25f, decay = 6f); tone(i * 0.1f, 0.3f, f / 2f, f / 2f, 0.08f, 1, decay = 6f) } }.out()
+        "bosshit" -> Mix(0.5f).apply { tone(0f, 0.3f, 120f, 40f, 0.45f, 3, decay = 8f); hiss(0f, 0.2f, 0.3f, 0.5f, 15f); tone(0.01f, 0.4f, 1800f, 1700f, 0.06f, 3, decay = 9f); tone(0.01f, 0.4f, 2410f, 2400f, 0.04f, 3, decay = 9f) }.out()
+        "roar" -> Mix(0.8f).apply { tone(0f, 0.75f, 110f, 70f, 0.25f, 2, vib = 0.12f, atk = 0.05f); hiss(0f, 0.7f, 0.15f, 0.8f, 3f) }.out()
+        "honk" -> Mix(0.3f).apply { tone(0f, 0.12f, 330f, 300f, 0.14f, 0, 0.3f, vib = 0.05f); tone(0.15f, 0.12f, 330f, 290f, 0.14f, 0, 0.3f, vib = 0.05f) }.out()
+        "bell" -> Mix(0.6f).apply { tone(0f, 0.55f, 2093f, 2093f, 0.1f, 3, decay = 7f); tone(0f, 0.55f, 2637f, 2637f, 0.07f, 3, decay = 8f); tone(0.18f, 0.4f, 2093f, 2093f, 0.08f, 3, decay = 8f) }.out()
+        "throw" -> Mix(0.2f).apply { hiss(0f, 0.18f, 0.2f, 0.1f, 15f); tone(0f, 0.15f, 700f, 300f, 0.05f, 3) }.out()
+        "door" -> Mix(0.5f).apply { tone(0f, 0.15f, 784f, 784f, 0.12f, 1, decay = 8f); tone(0.12f, 0.35f, 1175f, 1175f, 0.12f, 1, decay = 6f) }.out()
+        "click" -> Mix(0.05f).apply { tone(0f, 0.035f, 1200f, 900f, 0.12f, 0, 0.5f, decay = 60f) }.out()
+        "storm" -> Mix(1.2f).apply { hiss(0f, 1.15f, 0.3f, 0.85f, 1.2f) }.out()
+        "win" -> Mix(1.0f).apply { val n = intArrayOf(523, 659, 784, 1047, 784, 1047); n.forEachIndexed { i, f -> tone(i * 0.11f, if (i == n.size - 1) 0.4f else 0.12f, f.toFloat(), f.toFloat(), 0.16f, 0, 0.25f); tone(i * 0.11f, 0.12f, f / 2f, f / 2f, 0.08f, 1) } }.out()
+        "lose" -> Mix(1.0f).apply { val n = intArrayOf(392, 370, 349, 330); n.forEachIndexed { i, f -> tone(i * 0.2f, 0.22f, f.toFloat(), f * 0.97f, 0.16f, 2, vib = 0.02f) } }.out()
+        else -> Mix(0.06f).apply { tone(0f, 0.05f, 660f, 880f, 0.15f) }.out()
+    }
+
     private fun midi(tok: String): Int {
         var pc = when (tok[0]) { 'C' -> 0; 'D' -> 2; 'E' -> 4; 'F' -> 5; 'G' -> 7; 'A' -> 9; 'B' -> 11; else -> return 0 }
         var i = 1
@@ -90,8 +151,19 @@ object Synth {
         val sps = (RATE / s.sps).toInt()
         val n = steps * sps
         val mix = FloatArray(n)
-        voice(mix, mel, steps, sps, 0.16f, square = true)
-        voice(mix, bass, steps, sps, 0.22f, square = false)
+        // lead with a tape-style echo, a soft octave-down double, bass, and a chiptune arpeggio over the bass root
+        val lead = FloatArray(n)
+        voice(lead, mel, steps, sps, 0.15f, 0)
+        voice(lead, mel, steps, sps, 0.05f, 2, -12)
+        val dly = sps * 3
+        for (i in 0 until n) { mix[i] += lead[i]; val j = i + dly; mix[j % n] += lead[i] * 0.22f; val k = i + dly * 2; mix[k % n] += lead[i] * 0.09f }
+        voice(mix, bass, steps, sps, 0.22f, 1)
+        val arp = ArrayList<String>(steps); var root = -1
+        for (st in 0 until steps) {
+            val b = bass[st % bass.size]; if (b != "-" && b != ".") root = midi(b)
+            arp.add(if (root < 0) "." else "#" + (root + 12 + intArrayOf(0, 7, 12, 7)[st % 4]))
+        }
+        voice(mix, arp, steps, sps, 0.035f, 2, 0, 0.55)
         var seed = 12345
         for (st in 0 until steps) {
             val d = s.drums[st % s.drums.length]
@@ -106,7 +178,8 @@ object Synth {
                 val noise = ((seed shr 16) and 0x7fff) / 16384.0 - 1.0
                 val v = when (d) {
                     'D' -> { ph += (110.0 * exp(-t * 18) + 55) / RATE; (sin(2 * PI * ph) * 0.5 + noise * 0.05) * exp(-t * 16) }
-                    'T' -> noise * 0.22 * exp(-t * 45)
+                    // doira "tak": ringing frame-drum skin plus a jingle burst
+                    'T' -> { ph += 330.0 / RATE; sin(2 * PI * ph) * 0.12 * exp(-t * 30) + noise * 0.16 * exp(-t * 40) }
                     else -> noise * 0.12 * exp(-t * 70)
                 }
                 mix[idx] += v.toFloat()
@@ -116,7 +189,9 @@ object Synth {
         return mix
     }
 
-    private fun voice(mix: FloatArray, notes: List<String>, steps: Int, sps: Int, amp: Float, square: Boolean) {
+    /** wave: 0 pulse 25%, 1 triangle, 2 pulse 12.5%. Tokens "#60" are raw midi numbers. */
+    private fun voice(mix: FloatArray, notes: List<String>, steps: Int, sps: Int, amp: Float, wave: Int, tr: Int = 0, gate: Double = 1.0) {
+        val square = wave != 1
         if (notes.isEmpty()) return
         var st = 0
         while (st < steps) {
@@ -124,7 +199,7 @@ object Synth {
             if (tok == "-" || tok == ".") { st++; continue }
             var len = 1
             while (st + len < steps && notes[(st + len) % notes.size] == "-") len++
-            val f = freq(midi(tok)); val start = st * sps; val total = len * sps
+            val f = freq((if (tok[0] == '#') tok.substring(1).toInt() else midi(tok)) + tr); val start = st * sps; val total = (len * sps * gate).toInt()
             var ph = 0.0
             for (i in 0 until total) {
                 val idx = start + i; if (idx >= mix.size) break
@@ -132,7 +207,7 @@ object Synth {
                 val vib = if (square && t > 0.18) 1 + 0.006 * sin(2 * PI * 5.5 * t) else 1.0
                 ph += f * vib / RATE
                 val p = ph - floor(ph)
-                val w = if (square) (if (p < 0.25) 1.0 else -1.0) * 0.8 else 1 - 4 * abs(p - 0.5)
+                val w = when (wave) { 0 -> (if (p < 0.25) 1.0 else -1.0) * 0.8; 2 -> (if (p < 0.125) 1.0 else -1.0) * 0.7; else -> 1 - 4 * abs(p - 0.5) }
                 val atk = (i / (RATE * 0.006)).coerceAtMost(1.0)
                 val rel = ((total - i) / (RATE * 0.03)).coerceAtMost(1.0)
                 val env = atk * rel * (0.65 + 0.35 * exp(-t * 6))

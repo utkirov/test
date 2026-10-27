@@ -42,6 +42,20 @@ class WebGfx(var ctx: dynamic) : Gfx {
     override fun clip(l: Float, t: Float, r: Float, b: Float) { ctx.beginPath(); ctx.rect(l, t, r - l, b - t); ctx.clip() }
     override fun saveAlpha(a: Float) { ctx.save(); ctx.globalAlpha = (ctx.globalAlpha as Number).toDouble() * a }
     override fun identity() { ctx.setTransform(1, 0, 0, 1, 0, 0) }
+
+    private val pics = HashMap<String, dynamic>()
+    override fun cached(key: String, w: Int, h: Int, x: Float, y: Float, draw: () -> Unit) {
+        var pic = pics[key]
+        if (pic == null) {
+            val cnv = js("document.createElement('canvas')"); cnv.width = w * 3; cnv.height = h * 3
+            val prev = ctx; ctx = cnv.getContext("2d"); ctx.scale(3, 3)
+            try { draw() } finally { ctx = prev }
+            pics[key] = cnv; pic = cnv
+        }
+        ctx.imageSmoothingEnabled = false
+        ctx.drawImage(pic, x, y, w, h)
+    }
+    override fun dropCache(prefix: String) { pics.keys.filter { it.startsWith(prefix) }.forEach { pics.remove(it) } }
 }
 
 /** localStorage, mirrored to Telegram CloudStorage so progress follows the player between devices. */
@@ -113,10 +127,9 @@ object WebAudio : Audio {
         return b
     }
 
-    override fun sfx(f: Float, d: Float, type: Int, v: Float, slide: Float) {
+    override fun play(key: String, pcm: () -> FloatArray) {
         if (ac == null || ac.state != "running") return
-        val key = "$f|$d|$type|$v|$slide"
-        val b = sfxBuf.getOrPut(key) { buffer(Synth.sfx(f, d, type, v, slide)) }
+        val b = sfxBuf.getOrPut(key) { buffer(pcm()) }
         val src = ac.createBufferSource(); src.buffer = b; src.connect(ac.destination); src.start()
     }
 
@@ -155,6 +168,7 @@ object WebHost {
     private val zoneOf = HashMap<String, Char>()
     private var last = 0.0; private var acc = 0.0
     private var lastBack = false
+    private var galleryPage = -1
 
     fun start() {
         canvas = document.getElementById("c")
@@ -209,6 +223,11 @@ object WebHost {
         window.addEventListener("keyup", { e: dynamic -> key(e.code as String, false, e) })
         document.getElementById("load")?.remove()
         if ((window.location.search as String).contains("selftest")) { selfTest(); return }
+        val gal = Regex("gallery=(\\d+)").find(window.location.search as String)
+        if (gal != null) { galleryPage = gal.groupValues[1].toInt() }
+        val wq = Regex("world=(\\d+)(?:&x=(\\d+))?").find(window.location.search as String)
+        if (wq != null) { game.loadLevel(wq.groupValues[1].toInt()); game.state = "play"; game.toasts.clear()
+            val xs = wq.groupValues[2]; if (xs.isNotEmpty()) { game.pl.x = xs.toFloat(); game.pl.y = 0f } }
         window.requestAnimationFrame { t: Double -> frame(t) }
     }
 
@@ -286,7 +305,7 @@ object WebHost {
         // Telegram back button mirrors the in-game back action
         val wantBack = game.state != "title"
         if (wantBack != lastBack) { lastBack = wantBack; try { if (wantBack) tg?.BackButton?.show() else tg?.BackButton?.hide() } catch (e: dynamic) { } }
-        game.render()
+        if (galleryPage >= 0) Gallery.draw(game, game.frame, galleryPage) else game.render()
         ctx.setTransform(1, 0, 0, 1, 0, 0)
         ctx.fillStyle = "#0f1631"; ctx.fillRect(0, 0, cw, ch)
         ctx.imageSmoothingEnabled = false

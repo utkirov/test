@@ -1,7 +1,9 @@
 package uz.botir.game
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.RectF
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.Typeface
@@ -42,6 +44,23 @@ class AndroidGfx(private val font: Typeface) : Gfx {
     override fun clip(l: Float, t: Float, r: Float, b: Float) { c.clipRect(l, t, r, b) }
     override fun saveAlpha(a: Float) { c.saveLayerAlpha(null, (a * 255).toInt()) }
     override fun identity() = c.setMatrix(null)
+
+    private val pics = HashMap<String, Bitmap>()
+    private val bp = Paint().apply { isFilterBitmap = false; isAntiAlias = false }
+    private val dst = RectF()
+    override fun cached(key: String, w: Int, h: Int, x: Float, y: Float, draw: () -> Unit) {
+        val b = pics[key] ?: run {
+            val bmp = Bitmap.createBitmap(w * 3, h * 3, Bitmap.Config.ARGB_8888)
+            val prev = cv; cv = Canvas(bmp); cv!!.scale(3f, 3f)
+            try { draw() } finally { cv = prev }
+            pics[key] = bmp; bmp
+        }
+        dst.set(x, y, x + w, y + h); c.drawBitmap(b, null, dst, bp)
+    }
+    override fun dropCache(prefix: String) {
+        val it = pics.entries.iterator()
+        while (it.hasNext()) { val e = it.next(); if (e.key.startsWith(prefix)) { e.value.recycle(); it.remove() } }
+    }
 }
 
 class AndroidStore(ctx: Context) : Store {
@@ -69,11 +88,10 @@ object AndroidAudio : Audio {
         .setContentType(if (music) AudioAttributes.CONTENT_TYPE_MUSIC else AudioAttributes.CONTENT_TYPE_SONIFICATION).build()
     private val fmt = AudioFormat.Builder().setEncoding(AudioFormat.ENCODING_PCM_16BIT).setSampleRate(Synth.RATE).setChannelMask(AudioFormat.CHANNEL_OUT_MONO).build()
 
-    override fun sfx(f: Float, d: Float, type: Int, v: Float, slide: Float) {
+    override fun play(key: String, pcm: () -> FloatArray) {
         try {
-            val key = "$f|$d|$type|$v|$slide"
             val t = sfxCache.getOrPut(key) {
-                val buf = pcm16(Synth.sfx(f, d, type, v, slide))
+                val buf = pcm16(pcm())
                 AudioTrack.Builder().setAudioAttributes(attrs(false)).setAudioFormat(fmt).setBufferSizeInBytes(buf.size * 2)
                     .setTransferMode(AudioTrack.MODE_STATIC).build().also { it.write(buf, 0, buf.size) }
             }

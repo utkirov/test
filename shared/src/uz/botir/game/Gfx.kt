@@ -22,6 +22,21 @@ object G {
         if (h.length == 6) (0xFF000000L or v).toInt() else v.toInt()
     }
 
+    private val shades = HashMap<String, String>()
+    private fun hx(v: Int) = v.coerceIn(0, 255).toString(16).padStart(2, '0')
+    /** Darker (f<1) or lighter (f>1) version of a color. */
+    fun shade(col: String, f: Float): String = shades.getOrPut("$col*$f") {
+        val v = col(col); val r = (v shr 16) and 255; val g = (v shr 8) and 255; val b = v and 255
+        if (f <= 1f) "#" + hx((r * f).roundToInt()) + hx((g * f).roundToInt()) + hx((b * f).roundToInt())
+        else { val k = f - 1f; "#" + hx((r + (255 - r) * k).roundToInt()) + hx((g + (255 - g) * k).roundToInt()) + hx((b + (255 - b) * k).roundToInt()) }
+    }
+    /** Mix two colors, t=0 → a, t=1 → b. */
+    fun mix(a: String, b: String, t: Float): String = shades.getOrPut("$a~$b~$t") {
+        val x = col(a); val y = col(b)
+        fun ch(sh: Int) = (((x shr sh) and 255) * (1 - t) + ((y shr sh) and 255) * t).roundToInt()
+        "#" + hx(ch(16)) + hx(ch(8)) + hx(ch(0))
+    }
+
     fun px(col: String, x: Number, y: Number, w: Number = 1, h: Number = 1) =
         Plat.gfx.rect(col(col), x.toFloat(), y.toFloat(), w.toFloat(), h.toFloat())
 

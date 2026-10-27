@@ -26,6 +26,7 @@ class Player(x: Float, y: Float) : Body(x, y, 10f, 26f) {
     var face = 1; var hp = 3; var inv = 0; var pow = 0; var coy = 0; var buf = 0; var jumps = 0; var dist = 0f
     var safeX = x; var safeY = y; var carry = 0; var mp: MP? = null
     var zip: Zip? = null; var zipT = 0f; var zipCd = 0; var inWater = false; var sink = 0f
+    var wasOn = true; var landT = 0; var anim = "idle"; var animT = 0
 }
 
 class Enemy(val t: Char, x: Float, y: Float, w: Float, h: Float, var min: Float, var max: Float) : Body(x, y, w, h) {
@@ -52,7 +53,7 @@ class Thrower(val x: Float, val y: Float, val trig: Float, val egg: String) { va
 class Goal(val x: Float, val y: Float, val w: Float, val h: Float, val kind: String)
 class Boss(var x: Float, var y: Float, val kind: Int) { val w = 34f; val h = 40f; var vx = -0.8f; var vy = 0f; var hp = 3; var inv = 0; var t = 0; var dead = 0 }
 class Shot(var x: Float, var y: Float, var vx: Float, var vy: Float, val k: Char = 'p') { var dead = false; var life = 0 }
-class Fx(var x: Float, var y: Float, var vx: Float, var vy: Float, var life: Int, val c: String)
+class Fx(var x: Float, var y: Float, var vx: Float, var vy: Float, var life: Int, val c: String, val kind: Int = 0, val text: String = "") { val life0 = life }
 class Toast(val s: String, var f: Int)
 class Btn(val x: Float, val y: Float, val w: Float, val h: Float, val label: String, val sub: String = "", val style: Int = 0, val tag: Int = -1, val act: () -> Unit)
 class Theme(val top: String, val top2: String, val body: String, val dot: String, val wall: String, val mortar: String, val plank: String, val plank2: String, val awning: Boolean = false)
@@ -228,14 +229,14 @@ class Game {
     fun newMap(c: Int, r: Int) { cols = c; rows = r; map = Array(r) { CharArray(c) { '.' } } }
 
     private fun startLevel(i: Int) {
-        Sfx.play(440f, 0.05f); loadLevel(i); state = "play"; btns.clear(); frame = 0
+        Sfx.fx("click"); loadLevel(i); state = "play"; btns.clear(); frame = 0
         Music.play(LV.song)
         tip(L(levels[i].mech[0], levels[i].mech[1]))
         if (!greeted && season != Season.NONE) { greeted = true; tip(Season.greeting(season, this)) }
     }
 
     fun startEndless() {
-        Sfx.play(440f, 0.05f); endless = true; LV = endlessDef; LVI = -1; clearWorld()
+        Sfx.fx("click"); endless = true; LV = endlessDef; LVI = -1; clearWorld()
         newMap(400, 17); genX = 0; genTop = 14
         val b = B(this); b.G(0, 12, 14); genX = 13; genEndless(b, 380)
         total = 0; coins = 0; msg = null; spawnPlayer(); runStart = pl.x
@@ -249,7 +250,7 @@ class Game {
     fun egg(z: Zone?) {
         if (z == null || found.contains(z.id) || endless) return
         found.add(z.id); addS("eggs$LVI", z.id)
-        toast("* " + L(z.m[0], z.m[1])); Sfx.tune(intArrayOf(523, 659, 784, 1046), 110); burst(pl.x + 5, pl.y, "#f4c430", 14); vib(25)
+        toast("* " + L(z.m[0], z.m[1])); Sfx.fx("egg"); sparkle(pl.x + 5, pl.y, 8); burst(pl.x + 5, pl.y, "#f4c430", 14); vib(25)
         when (z.eff) {
             "hp" -> pl.hp = min(5, pl.hp + 1)
             "lowg" -> lowg = 600
@@ -266,7 +267,7 @@ class Game {
 
     fun hurt() {
         if (pl.inv > 0 || pl.pow > 0 || pl.carry > 0) return
-        pl.hp--; pl.inv = 100; pl.vy = -3.5f; pl.vx = -pl.face * 2f; pl.zip = null; pl.sink = 0f; Sfx.play(140f, 0.2f, 2, 0.25f, 0.7f); vib(70)
+        pl.hp--; pl.inv = 100; pl.vy = -3.5f; pl.vx = -pl.face * 2f; pl.zip = null; pl.sink = 0f; Sfx.fx("hurt"); vib(70)
         if (mini != null) miniHits++
         if (boss != null) bossHits++
         if (pl.hp <= 0) { state = "dead"; delayed(30) { if (endless) endRun() else show("over") } }
@@ -283,10 +284,12 @@ class Game {
         if (timers.isNotEmpty()) { val due = timers.filter { it.first <= frame }; timers.removeAll(due.toSet()); due.forEach { it.second() } }
         if (state != "play") {
             stepFx()
+            if (state == "won" || state == "dead") animatePlayer(0f)
             if (state in MENU_BG) { camX += 0.3f; if (camX > cols * T - W) camX = 0f }
             return
         }
         val p = pl
+        val vyPrev = p.vy
         var dir = (if (kR) 1 else 0) - (if (kL) 1 else 0)
         if (endless) dir = 1
         // mosaic rhythm
@@ -301,7 +304,10 @@ class Game {
         if (p.zipCd > 0) p.zipCd--
         val pb: Float
         val cx = p.x + p.w / 2
+        val wasWater = p.inWater
         p.inWater = tAt(cx, p.y + p.h * 0.6f) == 'w'
+        if (p.inWater && !wasWater) { Sfx.fx("splash"); repeat(10) { fx.add(Fx(cx, p.y + p.h * 0.5f, ((G.rnd() - .5) * 3).toFloat(), (-1.5 - G.rnd() * 2).toFloat(), 26, "#cfeeff")) } }
+        if (p.inWater && frame % 40 == 0) fx.add(Fx(cx + 3, p.y + 4, 0f, -0.5f, 30, "#e8f6ff", 2))
         val maxV = if (endless) 1.75f + min(1.1f, (p.x - runStart) / T / 1800f) else if (p.sink > 0) 0.9f else 1.75f
 
         if (p.zip != null) {
@@ -312,7 +318,7 @@ class Game {
             if (dir != 0) { p.vx += dir * 0.18f; p.vx = p.vx.coerceIn(-1.1f, 1.1f); p.face = dir } else p.vx *= 0.9f
             if (p.buf > 0) {
                 val nearTop = tAt(cx, p.y + 2) != 'w'
-                p.vy = if (nearTop) -5.8f else -2.4f; p.buf = 0; Sfx.play(if (nearTop) 420f else 300f, 0.06f, 1, 0.2f)
+                p.vy = if (nearTop) -5.8f else -2.4f; p.buf = 0; Sfx.fx(if (nearTop) "jump" else "bubble")
                 burst(cx, p.y + 4, "#cfeeff", 3)
             }
             p.buf--
@@ -325,10 +331,10 @@ class Game {
             if (p.on) { p.coy = 6; p.jumps = 0 } else p.coy--
             if (p.buf > 0) {
                 if (p.coy > 0) {
-                    p.vy = (if (lowg > 0) -4.6f else -6.1f) + p.sink * 0.1f; p.coy = 0; p.buf = 0; p.jumps = 1; p.mp = null; Sfx.play(420f)
+                    p.vy = (if (lowg > 0) -4.6f else -6.1f) + p.sink * 0.1f; p.coy = 0; p.buf = 0; p.jumps = 1; p.mp = null; Sfx.fx("jump"); if (p.sink == 0f) dust(p.x + 5, p.y + p.h, 2)
                     if (p.sink > 0) { burst(p.x + 5, p.y + p.h, "#e2c68e", 6); p.sink = max(0f, p.sink - 5f) }
                     for (z in zones) if (z.cond == "jump" && ovP(z)) { val n = (jc[z.id] ?: 0) + 1; jc[z.id] = n; if (n >= 3) egg(z) }
-                } else if (p.pow > 0 && p.jumps < 2) { p.vy = -5.6f; p.jumps = 2; p.buf = 0; Sfx.play(620f); burst(p.x + 5, p.y + 26, "#f4c430", 6) }
+                } else if (p.pow > 0 && p.jumps < 2) { p.vy = -5.6f; p.jumps = 2; p.buf = 0; Sfx.fx("djump"); burst(p.x + 5, p.y + 26, "#f4c430", 6) }
             }
             p.buf--
             if (!kJ && p.vy < -2.4f && p.carry == 0 && bounced == 0) p.vy = -2.4f
@@ -387,6 +393,7 @@ class Game {
         if (mini != null) updMini()
         updShots()
         stepFx()
+        animatePlayer(vyPrev)
         if (endless) { if (p.x > (cols - 40) * T) growEndless() }
         else if (!LV.boss && (miniDef == null || miniDone)) goal?.let { g -> if (ov(p.x, p.y, p.w, p.h, g.x + 12, g.y, g.w - 12, g.h)) levelWon() }
         var tx = p.x + p.w / 2 - W / 2 + p.face * 24
@@ -400,7 +407,7 @@ class Game {
 
     fun levelWon() {
         if (state != "play") return
-        state = "won"; Sfx.tune(intArrayOf(523, 659, 784, 1046), 150); vib(40)
+        state = "won"; Sfx.fx("win"); vib(40); sparkle(pl.x + 5, pl.y + 5, 12)
         lastEarned = coins; wallet += coins; pI("wallet", wallet)
         var st = 1
         if (coins >= total) st = st or 2
@@ -425,7 +432,7 @@ class Game {
         if (!p.on) return
         when (p.land) {
             'J' -> {
-                p.vy = -9.4f; p.on = false; p.jumps = 0; bounced = 30; Sfx.play(260f, 0.25f, 1, 0.25f, 2.6f); burst(p.x + 5, p.y + p.h, "#f4c430", 8); vib(15)
+                p.vy = -9.4f; p.on = false; p.jumps = 0; bounced = 30; Sfx.fx("spring"); burst(p.x + 5, p.y + p.h, "#f4c430", 8); vib(15)
                 if (tips.add("tramp")) tip(L("Курпача-батут! Подбрасывает высоко.", "Ko'rpacha-batut! Baland otadi."))
             }
             'C' -> {
@@ -455,7 +462,7 @@ class Game {
             if (e.value > 0) {
                 e.setValue(e.value + 1)
                 if (e.value % 8 == 0) burst(tx * T + 8f, ty * T + 2f, "#d9963f", 1)
-                if (e.value >= 36) { map[ty][tx] = '.'; burst(tx * T + 8f, ty * T + 8f, "#8b5a2b", 10); Sfx.play(160f, 0.15f, 2, 0.2f, 0.6f); e.setValue(-300) }
+                if (e.value >= 36) { map[ty][tx] = '.'; burst(tx * T + 8f, ty * T + 8f, "#8b5a2b", 10); Sfx.fx("crack"); e.setValue(-300) }
             } else {
                 e.setValue(e.value + 1)
                 if (e.value >= 0) {
@@ -477,6 +484,7 @@ class Game {
                 if (w.storm) {
                     val sx = if (w.dir < 0) p.x + p.w + 6 else p.x - 6
                     if (solidAt(sx, p.y + p.h / 2) || solidAt(sx, p.y + 4)) continue   // sheltered behind a wall
+                    if (frame % 420 == 0) Sfx.fx("storm")
                     if (tips.add("storm")) tip(L("Песчаная буря! Прячься за стенами, пока она не утихнет.", "Qum bo'roni! Bo'ron tingguncha devor ortiga yashirin."))
                 } else if (tips.add("wind")) tip(L("Ветер на высоте! Держись против порывов.", "Balandda shamol! Shamolga qarshi tur."))
                 val sv = p.vx; p.vx = w.dir * (if (w.storm) 0.95f else 0.85f); moveX(p); p.vx = sv
@@ -492,7 +500,7 @@ class Game {
             val t = ((cx - z.x0) / (z.x1 - z.x0)).coerceIn(0f, 1f)
             val ly = z.y0 + (z.y1 - z.y0) * t
             if (abs(p.y - ly) < 9 && !p.on) {
-                p.zip = z; p.zipT = t; p.vx = 0f; p.vy = 0f; Sfx.play(700f, 0.08f, 1, 0.2f, 0.8f)
+                p.zip = z; p.zipT = t; p.vx = 0f; p.vy = 0f; Sfx.fx("zip")
                 if (tips.add("zip")) tip(L("Трос! Ботир едет сам. Прыжок — отпустить.", "Tros! Botir o'zi ketadi. Sakrash — qo'yib yuborish."))
                 return
             }
@@ -527,7 +535,7 @@ class Game {
             if (ov(p.x, p.y, p.w, p.h, e.x, e.y, e.w, e.h)) {
                 if (e.t == 'h') { e.dead = 1; val z = zones.find { it.cond == "humo" }; if (z != null) egg(z) else p.carry = 60; continue }
                 if (p.pow > 0 || p.carry > 0 || (p.vy > 0 && p.y + p.h - p.vy <= e.y + 6)) {
-                    e.dead = 1; p.vy = if (kJ) -6f else -4f; Sfx.play(220f, 0.12f, 1, 0.3f); burst(e.x + 6, e.y + 4, "#ffffff", 10); vib(20)
+                    e.dead = 1; p.vy = if (kJ) -6f else -4f; Sfx.fx("stomp"); if (e.t == 'g') Sfx.fx("honk"); popText(e.x + 6, e.y - 4, "+", "#ffffff"); burst(e.x + 6, e.y + 4, "#ffffff", 10); vib(20)
                     if (endless) coins++
                     stomps[e.t] = (stomps[e.t] ?: 0) + 1
                     for (z in zones) if (z.cond == "stomp" && z.et == e.t && (stomps[e.t] ?: 0) >= z.cnt) egg(z)
@@ -553,9 +561,9 @@ class Game {
         for (i in items) {
             if (ov(p.x, p.y, p.w, p.h, i.x, i.y, i.w, i.h)) {
                 when (i.t) {
-                    'n' -> { coins++; Sfx.play(880f, 0.06f); burst(i.x + 5, i.y + 5, "#f0c27a", 5) }
-                    's' -> { p.hp = min(5, p.hp + 1); Sfx.play(520f, 0.15f, 1); burst(i.x + 5, i.y + 5, "#e8b25a", 8) }
-                    'd' -> { p.pow = powTime(); Sfx.play(660f, 0.3f, 1); msg = L("ДУППИ-СИЛА!", "DO'PPI KUCHI!"); msgF = 90; burst(i.x + 5, i.y + 5, "#f4c430", 14) }
+                    'n' -> { coins++; Sfx.fx("coin"); sparkle(i.x + 5, i.y + 5, 3, "#ffe9a8"); popText(i.x + 5, i.y - 2, "+1") }
+                    's' -> { p.hp = min(5, p.hp + 1); Sfx.fx("heal"); popText(i.x + 5, i.y - 2, "+1", "#ff8a8a"); burst(i.x + 5, i.y + 5, "#e8b25a", 8) }
+                    'd' -> { p.pow = powTime(); Sfx.fx("power"); sparkle(i.x + 5, i.y + 5, 10); msg = L("ДУППИ-СИЛА!", "DO'PPI KUCHI!"); msgF = 90; burst(i.x + 5, i.y + 5, "#f4c430", 14) }
                     'q' -> levelWon()
                     else -> burst(i.x + 5, i.y + 5, "#f4c430", 10)
                 }
@@ -566,7 +574,28 @@ class Game {
         items.removeAll(rm.toSet())
     }
 
-    fun stepFx() { for (q in fx) { q.x += q.vx; q.y += q.vy; q.vy += 0.12f; q.life-- }; fx.removeAll { it.life <= 0 } }
+    fun stepFx() {
+        for (q in fx) {
+            q.x += q.vx; q.y += q.vy; q.life--
+            when (q.kind) { 1 -> { q.vx *= 0.9f; q.vy *= 0.9f }; 2 -> q.vy += 0.05f; 3 -> q.vy *= 0.94f; else -> q.vy += 0.12f }
+        }
+        fx.removeAll { it.life <= 0 }
+    }
+    /** Soft dust puffs at a point. */
+    fun dust(x: Float, y: Float, n: Int = 3, dir: Float = 0f) { repeat(n) { fx.add(Fx(x + ((G.rnd() - .5) * 6).toFloat(), y - 2, (dir + (G.rnd() - .5) * 1.2).toFloat(), (-G.rnd() * 0.6).toFloat(), 22, "#e9dcc4", 1)) } }
+    fun sparkle(x: Float, y: Float, n: Int = 4, c: String = "#fff6c8") { repeat(n) { fx.add(Fx(x + ((G.rnd() - .5) * 10).toFloat(), y + ((G.rnd() - .5) * 10).toFloat(), 0f, -0.3f, 18 + (G.rnd() * 10).toInt(), c, 2)) } }
+    fun popText(x: Float, y: Float, s: String, c: String = "#f4c430") { fx.add(Fx(x, y, 0f, -1.2f, 40, c, 3, s)) }
+    private fun drawFx() {
+        for (q in fx) {
+            val x = (q.x - camX).roundToInt(); val y = (q.y - camY).roundToInt(); val k = q.life.toFloat() / q.life0
+            when (q.kind) {
+                1 -> { val r = 1f + (1f - k) * 3f; G.alpha(k * 0.8f) { G.circle(q.c, x, y, r) } }
+                2 -> { val on = (q.life / 3) % 2 == 0; if (on) { px(q.c, x - 1, y, 3, 1); px(q.c, x, y - 1, 1, 3) } else px(q.c, x, y, 1, 1) }
+                3 -> G.alpha(k.coerceAtMost(1f) * 1f) { txt(q.text, x, y, q.c, SM, 1) }
+                else -> px(q.c, x, y, 2, 2)
+            }
+        }
+    }
 
     // ================= boss (chapter finales) =================
     private fun spawnBoss() {
@@ -574,7 +603,7 @@ class Game {
         Music.play(Music.BOSS)
         if (LV.bossKind == 0) toast(L("Жадина-ака: «Казан мой! Ха-ха!»", "Ochko'z aka: «Qozon meniki! Ha-ha!»"))
         else toast(L("Зикна-ака: «Кафгир мой! Ни монетки не отдам!»", "Ziqna aka: «Kapgir meniki! Bir tiyin ham bermayman!»"))
-        Sfx.tune(intArrayOf(196, 185, 175, 165), 180, 2)
+        Sfx.fx("roar")
     }
 
     private fun updBoss() {
@@ -586,23 +615,23 @@ class Game {
         if (b.x < arenaX0 + 8) { b.x = arenaX0 + 8; b.vx = spd }
         if (b.x > arenaX1 - b.w - 8) { b.x = arenaX1 - b.w - 8; b.vx = -spd }
         b.vy += 0.32f; b.y += b.vy
-        if (b.y > bossGround - b.h) { b.y = bossGround - b.h; if (b.vy > 3) { burst(b.x + 17, b.y + 40, "#c9ced6", 10); Sfx.play(90f, 0.2f, 2, 0.3f, 0.6f); vib(30) }; b.vy = 0f }
+        if (b.y > bossGround - b.h) { b.y = bossGround - b.h; if (b.vy > 3) { burst(b.x + 17, b.y + 40, "#c9ced6", 10); Sfx.fx("land"); vib(30) }; b.vy = 0f }
         val per = max(50, 100 - (3 - b.hp) * 20 - b.kind * 10)
         if (b.t % per == 0) {
             val dx = p.x - b.x - 12
             shots.add(Shot(b.x + 17, b.y + 6, (dx / 50f).coerceIn(-3f, 3f), -4.5f, if (b.kind == 1) 'c' else 'p'))
             if (b.kind == 1 && b.hp < 3) shots.add(Shot(b.x + 17, b.y + 6, (dx / 70f).coerceIn(-3f, 3f), -6f, 'c'))
-            Sfx.play(300f, 0.1f, 1, 0.2f, 0.6f)
+            Sfx.fx("throw")
         }
         if (b.t % (per * 3) == per * 3 - 1 && b.y >= bossGround - b.h - 1) b.vy = -6.5f
         if (ov(p.x, p.y, p.w, p.h, b.x, b.y, b.w, b.h) && b.inv == 0) {
             if (p.vy > 0 && p.y + p.h - p.vy <= b.y + 8) {
-                b.hp--; b.inv = 70; p.vy = -6.8f; Sfx.play(160f, 0.25f, 0, 0.3f, 0.5f); burst(b.x + 17, b.y, "#f4c430", 18); vib(50)
+                b.hp--; b.inv = 70; p.vy = -6.8f; Sfx.fx("bosshit"); burst(b.x + 17, b.y, "#f4c430", 18); vib(50)
                 if (b.hp <= 0) {
                     b.dead = 1; Music.play(LV.song)
                     if (b.kind == 0) toast(L("Жадина-ака: «Ой-ой! Забирай свой казан!»", "Ochko'z aka: «Voy-voy! Qozoningni ol!»"))
                     else toast(L("Зикна-ака: «Ладно! Забирай свой кафгир!»", "Ziqna aka: «Mayli! Kapgiringni ol!»"))
-                    Sfx.tune(intArrayOf(392, 330, 262, 196), 200, 1)
+                    Sfx.fx("lose")
                     if (bossHits == 0) egg(zones.find { it.cond == "perfect" })
                 }
             } else hurt()
@@ -689,13 +718,13 @@ class Game {
                 val sh = Spr.enemyH(e.t)
                 c.save(); c.translate((e.x + e.w / 2 - camX).roundToInt().toFloat(), (e.y + e.h - sh - camY).roundToInt().toFloat()); c.scale(if (e.vx > 0) 1f else -1f, 1f); c.translate(-8f, 0f)
                 if (e.dead > 0) { c.translate(0f, sh * 0.6f); c.scale(1f, 0.4f) }
-                G.drawParts(Spr.enemy(e.t, (e.f / (if (e.fly) 6 else 8)) % 2), 0f); c.restore()
+                G.drawParts(Spr.enemy(e.t, e.f / (if (e.fly) 5 else 7)), 0f); c.restore()
             }
             drawBoss(); drawMini()
             drawPlayer(c)
             LV.over?.invoke(this)
             drawWaterTop()
-            for (q in fx) px(q.c, (q.x - camX).roundToInt(), (q.y - camY).roundToInt(), 2, 2)
+            drawFx()
             drawWindFx()
             if (lowg > 0) for (i in 0 until 20) { val h = hash(i, 3); px("#fff1e8", h % W, (h shr 8) % 100) }
         }
@@ -706,23 +735,47 @@ class Game {
 
     private fun drawPlayer(c: Cv) {
         val p = pl
-        if (p.y <= -500 || (p.inv > 0 && (frame / 4) % 2 == 1)) return
-        var lk = "idle"; var ub = 0f; var face = p.face
-        when {
-            p.zip != null -> lk = "hang"
-            dance > 0 -> { lk = if (frame % 20 < 10) "dance" else "idle"; face = if (frame % 40 < 20) 1 else -1 }
-            p.inWater -> lk = if ((frame / 10) % 2 == 0) "swim" else "jump"
-            !p.on -> lk = "jump"
-            abs(p.vx) > 0.2f -> { val f = (p.dist / 9).toInt() % 2; lk = if (f == 1) "run1" else "run0"; ub = if (f == 1) 0f else 1f }
-            else -> ub = ((frame / 30) % 2).toFloat()
-        }
+        if (p.y <= -500 || (p.inv > 0 && p.inv < 76 && (frame / 4) % 2 == 1)) return
+        var face = p.face
+        if (dance > 0) face = if (frame % 40 < 20) 1 else -1
+        val gold = p.pow > 0 && !(p.pow < 120 && frame % 10 < 5)
         val sink = p.sink.roundToInt()
         val baseY = (p.y + p.h - 31 - camY).roundToInt().toFloat()
+        val cx = (p.x + p.w / 2 - camX).roundToInt().toFloat()
+        if (gold && abs(p.vx) > 0.5f) G.alpha(0.3f) {   // after-image while powered up
+            c.save(); c.translate(cx - p.vx * 4, baseY); c.scale(face.toFloat(), 1f); c.translate(-12f, 0f)
+            Hero.draw(p.anim, p.animT, skin(), true, (p.dist / 26f) % 1f, p.vy); c.restore()
+        }
+        if (p.on && sink == 0 && p.zip == null) G.alpha(0.25f) { G.circle("#000000", cx, baseY + 31.5f, 5f) }
         c.save()
         if (sink > 0) c.clipRect(0f, 0f, W.toFloat(), baseY + 31)
-        c.translate((p.x + p.w / 2 - camX).roundToInt().toFloat(), baseY + sink); c.scale(face.toFloat(), 1f); c.translate(-12f, 0f)
-        G.drawParts(Spr.hero(lk, p.pow > 0 && !(p.pow < 120 && frame % 10 < 5), skin()), ub); c.restore()
-        if (p.carry > 0) { c.save(); c.translate((p.x + 5 - camX).roundToInt() - 8f, (p.y - camY - 10).roundToInt().toFloat()); G.drawParts(Spr.enemy('h', (frame / 5) % 2), 0f); c.restore() }
+        c.translate(cx, baseY + sink); c.scale(face.toFloat(), 1f); c.translate(-12f, 0f)
+        Hero.draw(p.anim, p.animT, skin(), gold, (p.dist / 26f) % 1f, p.vy)
+        c.restore()
+        if (p.carry > 0) { c.save(); c.translate((p.x + 5 - camX).roundToInt() - 8f, (p.y - camY - 10).roundToInt().toFloat()); G.drawParts(Spr.enemy('h', frame / 5), 0f); c.restore() }
+    }
+
+    /** Picks the animation for this frame and spawns footstep / landing dust. */
+    private fun animatePlayer(vyPrev: Float) {
+        val p = pl
+        if (p.on && !p.wasOn && vyPrev > 3f && p.zip == null && !p.inWater) {
+            p.landT = 8; dust(p.x + 5, p.y + p.h, 5); Sfx.fx("land")
+        }
+        if (p.landT > 0) p.landT--
+        if (p.on && abs(p.vx) > 1.2f && frame % 9 == 0 && p.sink == 0f) dust(p.x + 5 - p.face * 4, p.y + p.h, 1, -p.face * 0.4f)
+        p.wasOn = p.on
+        val a = when {
+            state == "won" -> "win"
+            p.zip != null -> "hang"
+            dance > 0 -> "dance"
+            p.inWater -> "swim"
+            p.inv > 76 -> "hurt"
+            !p.on -> if (p.vy < -0.5f) "jump" else "fall"
+            p.landT > 0 -> "land"
+            abs(p.vx) > 0.2f -> "run"
+            else -> "idle"
+        }
+        if (a != p.anim) { p.anim = a; p.animT = 0 } else p.animT++
     }
 
     private fun note(x: Float, y: Float, heart: Boolean) {
@@ -769,41 +822,52 @@ class Game {
         val c0 = max(0, (camX / T).toInt()); val c1 = min(cols - 1, c0 + W / T + 1)
         val r0 = max(0, (camY / T).toInt()); val r1 = min(rows - 1, r0 + H / T + 1)
         val blink = (frame % 150) > 115 && frame % 8 < 4
+        val st = if (endless) 0 else LV.bg
         for (ty in r0..r1) for (tx in c0..c1) {
             val ch = map[ty][tx]; if (ch == '.') continue
             val x = X(tx); val y = Y(ty); val h = hash(tx, ty)
             when (ch) {
-                '#' -> { px(th.body, x, y, T, T); px(th.dot, x + (h % 12), y + 4 + (h shr 4) % 10, 2, 2)
-                    if (tileAt(tx, ty - 1) != '#') { px(th.top, x, y, T, 5); px(th.top2, x, y, T, 2); px("#40000000", x, y + 5, T, 1)
-                        if (snow) { px("#f4f8ff", x, y - 1, T, 3); if (h % 3 == 0) px("#f4f8ff", x + h % 10, y + 2, 4, 2) }
-                        if (flowers && h % 5 == 0) { px("#2e9b6b", x + 6, y - 4, 1, 4); px(if (h % 2 == 0) "#e24b4a" else "#f4c430", x + 5, y - 6, 3, 2) } } }
-                'B' -> { px(th.wall, x, y, T, T); px(th.mortar, x, y + 5, T, 1); px(th.mortar, x, y + 11, T, 1)
-                    px(th.mortar, x + (if (ty % 2 == 1) 4 else 11), y, 1, 5); px(th.mortar, x + (if (ty % 2 == 1) 11 else 4), y + 6, 1, 5)
-                    if (tileAt(tx, ty - 1) != 'B') { px("#33000000", x, y, T, 2); if (snow) px("#f4f8ff", x, y - 1, T, 2) } }
-                '=' -> { px(OUT, x, y - 1, T, 7)
-                    if (th.awning) { for (k in 0 until 4) px(if (k % 2 == 1) th.plank2 else th.plank, x + k * 4, y, 4, 5); px("#33000000", x, y + 4, T, 1) }
-                    else { px(th.plank, x, y, T, 5); px(th.plank2, x, y, T, 1); px("#40000000", x + 7, y, 1, 5) }
+                '#' -> { val top = tileAt(tx, ty - 1) != '#'; val l = tileAt(tx - 1, ty) == '.'; val r = tileAt(tx + 1, ty) == '.'; val v = h % 4
+                    if (top) Plat.gfx.cached("tile:$st:g:$v:1:$l:$r", 16, 20, x, y - 4) { Tiles.ground(st, th, v, true, l, r) }
+                    else Plat.gfx.cached("tile:$st:g:$v:0:$l:$r", 16, 16, x, y) { Tiles.ground(st, th, v, false, l, r) }
+                    if (top && snow) { px("#f4f8ff", x, y - 1, T, 3); if (h % 3 == 0) px("#f4f8ff", x + h % 10, y + 2, 4, 2) }
+                    if (top && flowers && h % 5 == 0) { px("#2e9b6b", x + 6, y - 4, 1, 4); px(if (h % 2 == 0) "#e24b4a" else "#f4c430", x + 5, y - 6, 3, 2) } }
+                'B' -> { val top = tileAt(tx, ty - 1) != 'B'
+                    Plat.gfx.cached("tile:$st:B:${ty % 2}:$top", 16, 16, x, y) { Tiles.wall(st, th, ty % 2, top) }
+                    if (top && snow) px("#f4f8ff", x, y - 1, T, 2) }
+                '=' -> { Plat.gfx.cached("tile:$st:P:${h % 3}", 16, 8, x, y - 1) { Tiles.plank(st, th, h % 3) }
                     if (snow) px("#f4f8ff", x, y - 1, T, 1) }
-                'p' -> { px(OUT, x, y - 1, T, 7); px("#f2c230", x, y, T, 5); px("#fff1a0", x, y, T, 1); px("#b88a10", x, y + 4, T, 1)
-                    if (tx % 2 == 0) { px(OUT, x + 6, y + 5, 4, 48); px("#f2c230", x + 7, y + 5, 2, 48) } }
-                'w' -> { px("#3f8fcf", x, y, T, T); if (tileAt(tx, ty - 1) != 'w') { px("#86c5ef", x, y, T, 2); px("#e8f6ff", x + ((frame / 3 + tx * 5) % 14), y, 3, 1) } }
-                'J' -> { px(OUT, x, y + 4, T, 12); val cs = arrayOf("#d8373b", "#f4c430", "#2e9b6b", "#2457c5")
-                    val sq = if (abs(pl.x + 5 - (tx * T + 8)) < 12 && pl.vy < -6) 2 else 0
-                    for (k in 0 until 4) px(cs[k], x + 1 + k * 4 - (if (k == 3) 1 else 0), y + 5 + sq, 4, 10 - sq)
-                    px("#fff1e8", x + 1, y + 5 + sq, 14, 1); px("#59000000", x + 1, y + 13, 14, 2) }
+                'p' -> { px(OUT, x, y - 1, T, 7); px("#f2c230", x, y, T, 5); px("#fff1a0", x, y, T, 1); px("#d8a818", x, y + 3, T, 1); px("#b88a10", x, y + 4, T, 1)
+                    if (tx % 2 == 0) { px(OUT, x + 6, y + 5, 4, 48); px("#f2c230", x + 7, y + 5, 2, 48); px("#fff1a0", x + 7, y + 5, 1, 48); px(OUT, x + 4, y - 1, 8, 2); px("#9aa1ab", x + 5, y - 1, 6, 1) } }
+                'w' -> { val surf = tileAt(tx, ty - 1) != 'w'
+                    px(if (surf) "#3f8fcf" else "#2f74b0", x, y, T, T); px(if (surf) "#357fc0" else "#28689e", x, y + 10, T, 6)
+                    val wv = ((frame / 6 + tx * 3) % 8)
+                    if (surf) { px("#86c5ef", x, y, T, 2); px("#bfe4f7", x + wv * 2 % 14, y, 4, 1); px("#e8f6ff", x + ((frame / 3 + tx * 5) % 14), y + 1, 2, 1); px("#5fa8dc", x + (wv * 3 + 5) % 14, y + 5, 3, 1) }
+                    else px("#3f8fcf", x + (wv * 2 + tx) % 14, y + 6, 2, 1) }
+                'J' -> { val sq = if (abs(pl.x + 5 - (tx * T + 8)) < 12 && pl.vy < -6) 3 else 0
+                    px(OUT, x, y + 3 + sq, T, 13 - sq)
+                    for (k in 0 until 3) { val ly = y + 4 + sq + k * ((12 - sq) / 3); val c = arrayOf("#d8373b", "#2457c5", "#2e9b6b")[k]
+                        px(c, x + 1, ly, 14, (12 - sq) / 3); px(G.shade(c, 1.3f), x + 1, ly, 14, 1)
+                        for (q in 0 until 3) { px("#f4c430", x + 3 + q * 5, ly + 1, 2, 1); px("#f5f0e6", x + 4 + q * 5, ly + 2, 1, 1) } }
+                    px("#59000000", x + 1, y + 14, 14, 2) }
                 'C' -> { val cr = crumble[ty * cols + tx] ?: 0; val sh = if (cr > 0 && frame % 4 < 2) 1 else 0
-                    px(OUT, x + sh, y, T, T); px("#b07a45", x + 1 + sh, y + 1, 14, 14); px("#8b5a2b", x + 1 + sh, y + 5, 14, 1); px("#8b5a2b", x + 1 + sh, y + 10, 14, 1)
-                    px("#e9c94a", x + 4 + sh, y - 3, 8, 5); px("#b89a2a", x + 6 + sh, y - 3, 1, 5)
+                    px(OUT, x + sh, y, T, T); px("#b07a45", x + 1 + sh, y + 1, 14, 14); px("#c99a5a", x + 1 + sh, y + 1, 14, 1); px("#8b5a2b", x + 1 + sh, y + 5, 14, 1); px("#8b5a2b", x + 1 + sh, y + 10, 14, 1)
+                    px("#8b5a2b", x + 2 + sh, y + 1, 1, 14); px("#8b5a2b", x + 13 + sh, y + 1, 1, 14); px("#d9b779", x + 4 + sh, y + 7, 8, 1)
+                    px(OUT, x + 2 + sh, y - 4, 12, 6); px("#e9c94a", x + 3 + sh, y - 3, 10, 5); px("#f4dc7a", x + 4 + sh, y - 3, 6, 1); px("#b89a2a", x + 5 + sh, y - 3, 1, 5); px("#b89a2a", x + 9 + sh, y - 3, 1, 5)
                     if (cr > 18) px(OUT, x + 7 + sh, y + 2, 1, 12) }
-                'E', 'e' -> { px("#4b5563", x, y, T, T); px("#9aa1ab", x, y, T, 4); val d = if (ch == 'E') 1 else -1
-                    for (k in 0 until 3) { val ox = ((frame * d / 2 + k * 6) % 16 + 16) % 16; px("#f4c430", x + ox, y + 1, 2, 2) }
-                    px("#2b2b33", x, y + 4, T, 1) }
-                'Q' -> { px("#d9b779", x, y, T, T); px("#e8cd95", x, y, T, 3)
+                'E', 'e' -> { px("#3a4250", x, y, T, T); px("#9aa1ab", x, y, T, 5); val d = if (ch == 'E') 1 else -1
+                    for (k in 0 until 4) { val ox = ((frame * d / 2 + k * 4) % 16 + 16) % 16; px("#6b7280", x + ox, y + 1, 1, 3) }
+                    px("#f4c430", x, y, T, 1); px("#2b2b33", x, y + 5, T, 1); px("#5a6270", x + 2, y + 8, 12, 1)
+                    val ax = x + 6 + (if (d > 0) ((frame / 6) % 3) else 2 - ((frame / 6) % 3)); px("#86c5ef", ax, y + 10, 4, 1); px("#86c5ef", ax + (if (d > 0) 3 else 0), y + 9, 1, 3) }
+                'Q' -> { px("#d9b779", x, y, T, T); px("#e8cd95", x, y, T, 3); px("#c9a46a", x, y + 13, T, 3)
+                    if ((frame / 10 + tx) % 5 == 0) { px("#b8935a", x + 6, y + 6, 4, 2); px("#a8834a", x + 7, y + 7, 2, 1) }
                     val o = (frame / 4 + tx * 3) % 16; px("#c9a46a", x + o % 12, y + 6, 4, 1); px("#c9a46a", x + (o + 7) % 12, y + 10, 3, 1)
                     if (frame % 30 < 15) px("#b8935a", x + h % 12, y + 2, 2, 1) }
                 'M', 'm' -> { val act = (ch == 'M') == mosaicA
-                    if (act && !blink) { px(OUT, x, y, T, T); px("#2e6fd8", x + 1, y + 1, 14, 14); px("#2fb3c9", x + 3, y + 3, 10, 10); px("#f5f0e6", x + 6, y + 6, 4, 4); px("#f4c430", x + 7, y + 7, 2, 2)
-                        px("#86c5ef", x + 1, y + 1, 14, 1) }
+                    if (act && !blink) Plat.gfx.cached("tile:mosaic", 16, 16, x, y) {
+                        px(OUT, 0, 0, T, T); px("#1f4ea8", 1, 1, 14, 14); px("#2fb3c9", 2, 2, 12, 12); px("#1f4ea8", 3, 3, 10, 10)
+                        px("#f5f0e6", 7, 3, 2, 10); px("#f5f0e6", 3, 7, 10, 2); px("#f5f0e6", 5, 5, 6, 6); px("#2fb3c9", 6, 6, 4, 4); px("#f4c430", 7, 7, 2, 2)
+                        px("#86c5ef", 1, 1, 14, 1); px("#14306e", 1, 14, 14, 1) }
                     else { val a = if (act) "#cc2fb3c9" else "#552fb3c9"; px(a, x + 1, y + 1, 14, 1); px(a, x + 1, y + 14, 14, 1); px(a, x + 1, y + 1, 1, 14); px(a, x + 14, y + 1, 1, 14) } }
             }
         }
@@ -958,7 +1022,7 @@ class Game {
         val cut = Cuts.ALL[cutId]
         cutLine++
         if (cut == null || cutLine >= cut.lines.size) endCut()
-        else { Sfx.play(600f, 0.03f, 1, 0.15f); Menu.layout(this) }
+        else { Sfx.fx("click"); Menu.layout(this) }
     }
     fun endCut() { if (cutAfter == "win") show("win") else if (cutAfter == "credits") show("credits") else { introI = cutAfter.toIntOrNull() ?: introI; show("intro") } }
 
@@ -971,7 +1035,7 @@ class Game {
 
     fun tap(gx: Float, gy: Float) {
         if (state == "play") { if (gx > W - 26 && gy < 20) show("pause"); return }
-        for (b in btns.toList()) if (gx >= b.x && gx <= b.x + b.w && gy >= b.y && gy <= b.y + b.h) { Sfx.play(500f, 0.04f); b.act(); return }
+        for (b in btns.toList()) if (gx >= b.x && gx <= b.x + b.w && gy >= b.y && gy <= b.y + b.h) { Sfx.fx("click"); b.act(); return }
         if (state == "cut") nextLine()
     }
 
@@ -993,11 +1057,11 @@ class Game {
         if (skinAvailable(s)) { skinId = s.id; st.putString("skin", s.id); return true }
         if (wallet < s.price) return false
         wallet -= s.price; pI("wallet", wallet); addS("owned", s.id); skinId = s.id; st.putString("skin", s.id)
-        Sfx.tune(intArrayOf(659, 784, 1046), 90); vib(30); return true
+        Sfx.fx("door"); vib(30); return true
     }
     fun buyUp(u: Upgrade): Boolean {
         if (hasUp(u.id) || wallet < u.price) return false
-        wallet -= u.price; pI("wallet", wallet); addS("ups", u.id); Sfx.tune(intArrayOf(659, 784, 1046), 90); vib(30); return true
+        wallet -= u.price; pI("wallet", wallet); addS("ups", u.id); Sfx.fx("door"); vib(30); return true
     }
 
     fun setOpt(k: String) {

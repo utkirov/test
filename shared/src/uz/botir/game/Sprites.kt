@@ -62,36 +62,88 @@ object Spr {
         return out
     }
 
-    fun enemy(t: Char, f: Int): List<Part> = when (t) {
-        'g' -> { val lo = if (f == 1) 1 else 0; listOf(
-            P(5, 11, 1, 3 - lo, "#f08a24"), P(8, 11, 1, 2 + lo, "#f08a24"),
-            P(2, 5, 10, 6, "#f2f2f2") { px("#cfcfd6", 4, 6, 5, 2); px("#cfcfd6", 2, 10, 10, 1) },
-            P(10, 1, 2, 6, "#f2f2f2"), P(14, 1, 3, 2, "#f08a24") { px("#c25e10", 14, 2, 3, 1) },
-            P(10, 0, 4, 3, "#f2f2f2") { px("#000000", 12, 1); px("#000000", 11, 0, 2, 1) }) }
-        'k' -> listOf(
-            P(1, 19, 13, 2, "#6b7280"), P(1, 21, 3, 2, "#222222"), P(11, 21, 3, 2, "#222222"), P(12, 7, 1, 12, "#9aa1ab"), P(11, 7, 3, 1, "#2b2b33"),
-            P(5, 14, 3, 5, "#3561a8"), P(8, 14 - f, 3, 5, "#2c4f8c"), P(4, 8, 7, 6, "#d8373b") { px("#f5f5f5", 6, 10, 3, 1) },
-            P(5, 2, 6, 6, "#e8ad7e") { px("#000000", 9, 4); px("#8a3324", 8, 6, 2, 1) }, P(4, 1, 7, 2, "#2457c5"), P(11, 2, 3, 1, "#2457c5"), P(9, 9, 3, 2, "#e8ad7e"))
-        's' -> listOf(
-            P(5, 14, 3, 7, "#3a2c24"), P(8, 14 - f, 3, 7, "#3a2c24"), P(4, 7, 7, 8, "#f5f0e6") { px("#cfc8b8", 4, 11, 7, 1) },
-            P(5, 1, 6, 6, "#e8ad7e") { px("#000000", 9, 3); px("#1c1410", 7, 5, 4, 1) }, P(4, 0, 8, 2, "#15151c") { px("#f5f5f5", 6, 0, 1, 1) },
-            P(12, 2 + f, 1, 15, "#8b5a2b"), P(11, 16 + f, 4, 5, "#e9c94a") { p -> px("#b89a2a", p.x + 1, p.y, 1, p.h) }, P(9, 9, 3, 2, "#e8ad7e"))
-        'c' -> listOf(
-            P(5, 15, 3, 6, "#1f2430"), P(8, 15 - f, 3, 6, "#1f2430"), P(4, 8, 7, 8, "#2b2f3a") { px("#f5f5f5", 6, 8, 3, 3); px("#d8373b", 7, 9, 1, 4) },
-            P(5, 2, 6, 6, "#e8ad7e") { px("#000000", 6, 4, 5, 1); px("#8a3324", 8, 6, 2, 1) }, P(5, 1, 6, 2, "#1c1410"),
-            P(11, 12, 4, 4, "#6b3f1f") { px("#f4c430", 12, 12, 2, 1) })
-        'b' -> listOf(
-            P(1, 3, 9, 4, "#8a93a6") { px("#5f6b80", 3, 4, 5, 1) }, P(8, 1, 4, 3, "#6b7690") { px("#ff7a00", 10, 2); px("#2fb39a", 8, 3, 3, 1) },
-            P(12, 2, 2, 1, "#e8b25a"), P(3, if (f == 1) 0 else 5, 5, 2, "#a7b0c2"))
-        'z' -> listOf( // lizard (kaltakesak)
-            P(0, 4, 4, 1, "#7a8a3a"), P(3, 3, 9, 4, "#9aaa4a") { px("#6b7a2a", 5, 4, 1, 1); px("#6b7a2a", 8, 4, 1, 1) },
-            P(11, 2, 5, 4, "#9aaa4a") { px("#000000", 14, 3) }, P(4, 7 - f, 2, 1, "#6b7a2a"), P(9, 6 + f, 2, 2, "#6b7a2a"))
-        else -> listOf( // humo bird
-            P(0, if (f == 1) 0 else 5, 7, 3, "#f4c430"), P(10, if (f == 1) 0 else 5, 7, 3, "#f4c430"),
-            P(5, 3, 8, 5, "#e6a23c") { px("#000000", 11, 4) }, P(13, 4, 3, 2, "#d8373b"), P(2, 5, 4, 2, "#f4c430"))
+    /** Enemy art. f = animation frame 0..3. Local box ~16 wide, feet at the bottom of [enemyH]. */
+    fun enemy(t: Char, f0: Int): List<Part> {
+        val f = ((f0 % 4) + 4) % 4
+        val sw = if (f % 2 == 0) 0 else 1          // two-step bob
+        val alt = if (f < 2) 1 else -1              // alternating limbs
+        return when (t) {
+            'g' -> { // angry mahalla goose, waddling
+                val nb = if (f == 1 || f == 3) 1 else 0
+                listOf(
+                    P(5, 11, 1, 3 + (if (alt > 0) 0 else -1), "#f08a24"), P(9, 11, 1, 3 + (if (alt > 0) -1 else 0), "#f08a24"),
+                    P(4 - alt, 13, 3, 1, "#e07a14"), P(8 + alt, 13, 3, 1, "#e07a14"),
+                    P(1, 5 + sw, 11, 7, "#f4f4f4") { px("#d9d9e2", 3, 7 + sw, 6, 3); px("#c4c4cf", 2, 8 + sw, 2, 2); px("#ffffff", 5, 5 + sw, 4, 1); px("#c4c4cf", 1, 11 + sw, 11, 1) },
+                    P(0, 6 + sw, 2, 3, "#e6e6ee"),
+                    P(10 + nb, 1 + sw, 2, 6, "#f4f4f4") { px("#d9d9e2", 10 + nb, 4 + sw, 1, 3) },
+                    P(10 + nb, 0 + sw, 4, 3, "#f4f4f4") { px("#000000", 12 + nb, 1 + sw); px("#5a0000", 11 + nb, 0 + sw, 2, 1) },
+                    P(14 + nb, 1 + sw, 3, 2, "#f08a24") { px("#c25e10", 14 + nb, 2 + sw, 3, 1) })
+            }
+            'k' -> { // kid on a scooter
+                val wheel: (Part) -> Unit = { pp -> px("#9aa1ab", pp.x + 1, pp.y + 1, 1, 1); if (f % 2 == 0) px("#444444", pp.x, pp.y + 1, 3, 1) else px("#444444", pp.x + 1, pp.y, 1, 3) }
+                val push = if (f < 2) 2 else -1
+                listOf(
+                    P(0, 20, 4, 3, "#222222", d = wheel), P(11, 20, 4, 3, "#222222", d = wheel),
+                    P(1, 19, 13, 2, "#6b7280") { px("#d8373b", 2, 19, 11, 1) },
+                    P(12, 7, 1, 12, "#9aa1ab"), P(10, 6, 5, 1, "#2b2b33"),
+                    P(6, 14, 3, 5, "#2c4f8c"), P(4 + push, 14, 3, 4 + (if (push > 0) 1 else 3), "#3561a8"),
+                    P(3, 8 + sw, 8, 7, "#d8373b") { px("#f5f5f5", 5, 10 + sw, 4, 1); px("#b02a2e", 3, 8 + sw, 1, 7) },
+                    P(5, 1 + sw, 7, 7, "#e8ad7e") { px("#2a1810", 10, 3 + sw); px("#ffffff", 9, 3 + sw); px("#8a3324", 9, 6 + sw, 2, 1); px("#1c1410", 5, 3 + sw, 2, 3) },
+                    P(3, 0 + sw, 8, 2, "#2457c5") { px("#173b8a", 3, 1 + sw, 8, 1) }, P(2, 1 + sw, 2, 1, "#2457c5"),
+                    P(10, 9 + sw, 3, 2, "#e8ad7e"))
+            }
+            's' -> { // bazaar seller with a broom
+                val br = if (f < 2) 0 else 1
+                listOf(
+                    P(5, 15, 3, 6 + (if (alt > 0) 0 else -1), "#3a2c24"), P(8, 15, 3, 6 + (if (alt > 0) -1 else 0), "#3a2c24"),
+                    P(4, 20 + (if (alt > 0) 0 else -1), 4, 1, "#1c1410"), P(8, 20 + (if (alt > 0) -1 else 0), 4, 1, "#1c1410"),
+                    P(3, 7 + sw, 9, 9, "#f5f0e6") { px("#d9d2c2", 3, 7 + sw, 1, 9); px("#2457c5", 4, 12 + sw, 7, 4); px("#173b8a", 4, 12 + sw, 7, 1) },
+                    P(5, 1 + sw, 6, 6, "#e8ad7e") { px("#2a1810", 9, 3 + sw); px("#1c1410", 7, 5 + sw, 4, 1); px("#c98a5e", 5, 4 + sw, 1, 2) },
+                    P(4, 0 + sw, 8, 2, "#15151c") { px("#f5f5f5", 6, 0 + sw, 1, 1); px("#f5f5f5", 9, 0 + sw, 1, 1) },
+                    P(12 + br, 2 + sw, 1, 14, "#8b5a2b"),
+                    P(11 + br * 2, 15 + sw, 5, 6, "#e9c94a") { pp -> for (k in 0 until 5) px(if (k % 2 == 0) "#c9a227" else "#f4dc7a", pp.x + k, pp.y + 1, 1, 5) },
+                    P(10, 8 + sw, 3, 2, "#e8ad7e"))
+            }
+            'c' -> { // office clerk with a briefcase
+                val bc = if (alt > 0) 0 else 1
+                listOf(
+                    P(5, 15, 3, 6 + (if (alt > 0) 0 else -1), "#1f2430"), P(8, 15, 3, 6 + (if (alt > 0) -1 else 0), "#1f2430"),
+                    P(4, 20 + (if (alt > 0) 0 else -1), 4, 1, "#0e0e12"), P(8, 20 + (if (alt > 0) -1 else 0), 4, 1, "#0e0e12"),
+                    P(3, 8 + sw, 9, 8, "#2b2f3a") { px("#f5f5f5", 6, 8 + sw, 3, 3); px("#d8373b", 7, 9 + sw, 1, 4 + (f % 2)); px("#3a4050", 11, 8 + sw, 1, 8) },
+                    P(5, 2 + sw, 6, 6, "#e8ad7e") { px("#000000", 6, 4 + sw, 5, 1); px("#9ad0ff", 9, 4 + sw, 1, 1); px("#8a3324", 8, 6 + sw, 2, 1) },
+                    P(5, 1 + sw, 6, 2, "#1c1410") { px("#3a2a20", 6, 1 + sw, 3, 1) },
+                    P(11 + bc, 13 + sw, 5, 4, "#6b3f1f") { px("#f4c430", 13 + bc, 13 + sw, 1, 1); px("#4a2a14", 11 + bc, 16 + sw, 5, 1) },
+                    P(11, 9 + sw, 2, 4, "#2b2f3a"))
+            }
+            'b' -> { // pigeon flapping
+                val wy = intArrayOf(-3, 0, 4, 0)[f]
+                listOf(
+                    P(1, 3, 9, 4, "#8a93a6") { px("#5f6b80", 3, 5, 5, 1); px("#a7b0c2", 2, 3, 6, 1); px("#454d5e", 0, 4, 2, 2) },
+                    P(8, 1, 4, 4, "#6b7690") { px("#ff7a00", 10, 2); px("#2fb39a", 8, 3, 2, 1); px("#9a5ab8", 8, 4, 2, 1) },
+                    P(12, 2, 2, 1, "#e8b25a"),
+                    P(3, 3 + wy.coerceAtMost(0), 6, 2 + kotlin.math.abs(wy).coerceAtMost(2), "#a7b0c2") { px("#5f6b80", 3, 3 + wy.coerceAtMost(0), 1, 2) })
+            }
+            'z' -> { // lizard (kaltakesak), tail wiggling
+                val tw = intArrayOf(0, 1, 0, -1)[f]
+                listOf(
+                    P(0, 4 + tw, 3, 1, "#6b7a2a"), P(2, 4, 2, 1, "#7a8a3a"),
+                    P(3, 3, 9, 4, "#9aaa4a") { px("#6b7a2a", 5, 4, 1, 1); px("#6b7a2a", 8, 4, 1, 1); px("#c4d06a", 4, 3, 7, 1) },
+                    P(11, 2, 5, 4, "#9aaa4a") { px("#000000", 14, 3); px("#e24b4a", 16, 4, 1, 1) },
+                    P(4, 7, 2, 1 + (if (alt > 0) 0 else 1), "#6b7a2a"), P(9, 7, 2, 1 + (if (alt > 0) 1 else 0), "#6b7a2a"))
+            }
+            else -> { // Humo, the golden bird of happiness
+                val wy = intArrayOf(-5, -1, 4, -1)[f]
+                listOf(
+                    P(-3, 5, 5, 2, "#f4c430") { px("#d8373b", -3, 6, 3, 1) }, P(-5, 6, 3, 1, "#e6a23c"),
+                    P(3, 3 + wy.coerceAtMost(0), 9, 3 + kotlin.math.abs(wy).coerceAtMost(3), "#f4c430") { px("#fff1a0", 4, 3 + wy.coerceAtMost(0), 6, 1); px("#e6a23c", 3, 5 + wy.coerceAtMost(0), 9, 1) },
+                    P(4, 3, 9, 5, "#e6a23c") { px("#f4c430", 5, 4, 6, 2) },
+                    P(12, 1, 4, 4, "#e6a23c") { px("#000000", 14, 2); px("#ffffff", 14, 2 - 0, 0, 0) },
+                    P(16, 2, 3, 2, "#d8373b"), P(12, -1, 3, 2, "#d8373b"))
+            }
+        }
     }
 
-    fun enemyH(t: Char) = when (t) { 'z' -> 8f; 'g' -> 14f; 'k' -> 24f; 's' -> 22f; 'c' -> 22f; 'b' -> 8f; else -> 9f }
+    fun enemyH(t: Char) = when (t) { 'z' -> 8f; 'g' -> 15f; 'k' -> 24f; 's' -> 22f; 'c' -> 22f; 'b' -> 8f; else -> 9f }
 
     fun person(xx: Float, yy: Float, body: String, hat: String, atlas: Boolean = false, scarf: Boolean = false, beard: Boolean = false, glasses: Boolean = false, arm: Int = 0, skin: String = "#e8ad7e") {
         val x = G.round(xx); val y = G.round(yy)

@@ -17,6 +17,10 @@ interface Gfx {
     /** save() + multiply opacity; paired with restore() */
     fun saveAlpha(a: Float)
     fun identity()
+    /** Draws a w×h picture at x,y. On first use it is rendered once by [draw] into an offscreen 3x surface and kept. */
+    fun cached(key: String, w: Int, h: Int, x: Float, y: Float, draw: () -> Unit)
+    /** Forget cached pictures whose key starts with [prefix]. */
+    fun dropCache(prefix: String)
 }
 
 /** Key-value persistence: SharedPreferences, or localStorage + Telegram CloudStorage. */
@@ -33,7 +37,8 @@ interface Store {
 
 /** Sound backend. PCM is produced by [Synth] on both platforms. */
 interface Audio {
-    fun sfx(f: Float, d: Float, type: Int, v: Float, slide: Float)
+    /** Play a short PCM effect; the platform caches the buffer by [key] and calls [pcm] only once. */
+    fun play(key: String, pcm: () -> FloatArray)
     fun music(i: Int)
     fun setMusicEnabled(on: Boolean)
 }
@@ -55,16 +60,19 @@ object Plat {
 }
 
 object NoAudio : Audio {
-    override fun sfx(f: Float, d: Float, type: Int, v: Float, slide: Float) {}
+    override fun play(key: String, pcm: () -> FloatArray) {}
     override fun music(i: Int) {}
     override fun setMusicEnabled(on: Boolean) {}
 }
 
-/** Short sound effects. type: 0 square, 1 triangle, 2 saw, 3 sine */
+/** Sound effects: named, layered effects from [Synth.fx] plus simple tones. type: 0 square, 1 triangle, 2 saw, 3 sine */
 object Sfx {
     var enabled = true
+    fun fx(name: String) {
+        if (enabled) try { Plat.audio.play("fx:$name") { Synth.fx(name) } } catch (_: Throwable) { }
+    }
     fun play(freq: Float, dur: Float = 0.08f, type: Int = 0, vol: Float = 0.25f, slide: Float = 1.5f) {
-        if (enabled && freq > 0f) try { Plat.audio.sfx(freq, dur, type, vol, slide) } catch (_: Throwable) { }
+        if (enabled && freq > 0f) try { Plat.audio.play("$freq|$dur|$type|$vol|$slide") { Synth.sfx(freq, dur, type, vol, slide) } } catch (_: Throwable) { }
     }
     fun tune(notes: IntArray, step: Long = 130, type: Int = 0) {
         notes.forEachIndexed { i, f -> if (f > 0) Plat.later(i * step) { play(f.toFloat(), 0.12f, type, 0.22f, 1.01f) } }

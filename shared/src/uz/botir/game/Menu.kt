@@ -143,7 +143,8 @@ object Menu {
 
     private fun heroAt(g: Game, sk: Skin, x: Float, y: Float, scale: Float, lk: String = "idle") {
         G.c.save(); G.c.translate(x, y); G.c.scale(scale, scale)
-        G.drawParts(Spr.hero(lk, false, sk), ((g.frame / 30) % 2).toFloat()); G.c.restore()
+        val anim = when (lk) { "run0", "run1" -> "run"; else -> lk }
+        Hero.draw(anim, g.frame, sk, false, (g.frame % 48) / 48f); G.c.restore()
     }
 
     private fun speaker(g: Game, who: Char, x: Float, y: Float, active: Boolean) {

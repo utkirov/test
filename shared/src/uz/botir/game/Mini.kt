@@ -31,7 +31,7 @@ fun Game.spawnMini(d: MiniDef) {
     val m = Mini(d.k, d.x1 - w - 3 * T, d.gy - h, w, h, d.x0, d.x1, d.gy)
     if (d.k == 'P') { m.x = (d.x0 + d.x1) / 2 - w / 2; m.y = d.gy - 62 }
     mini = m; miniHits = 0
-    Music.play(Music.BOSS); Sfx.tune(intArrayOf(220, 196, 175), 160, 2); vib(40)
+    Music.play(Music.BOSS); Sfx.fx("roar"); vib(40)
     val line = when (d.k) {
         'G' -> L("Гусь-король: «Га-га-га! Это мой двор!»", "G'oz-qirol: «Ga-ga-ga! Bu mening hovlim!»")
         'A' -> L("Король носильщиков: «Пошт-пошт! С дороги!»", "Aravakash-qirol: «Posht-posht! Yo'ldan qoch!»")
@@ -67,17 +67,17 @@ fun Game.updMini() {
                 0 -> { // patrol
                     val sp = if (m.k == 'V') 2.2f + (3 - m.hp) * 0.4f else walk
                     m.x += m.dir * sp
-                    if (m.x < m.x0 + 4) { m.x = m.x0 + 4; if (m.k == 'V') { m.st = 3; m.stT = 40; Sfx.play(1200f, 0.05f, 0, 0.15f) }; m.dir = 1 }
-                    if (m.x + m.w > m.x1 - 4) { m.x = m.x1 - 4 - m.w; if (m.k == 'V') { m.st = 3; m.stT = 40; Sfx.play(1200f, 0.05f, 0, 0.15f) }; m.dir = -1 }
+                    if (m.x < m.x0 + 4) { m.x = m.x0 + 4; if (m.k == 'V') { m.st = 3; m.stT = 40; Sfx.fx("bell") }; m.dir = 1 }
+                    if (m.x + m.w > m.x1 - 4) { m.x = m.x1 - 4 - m.w; if (m.k == 'V') { m.st = 3; m.stT = 40; Sfx.fx("bell") }; m.dir = -1 }
                     if (m.k == 'V' && m.t % 170 == 0 && m.vy == 0f) m.vy = -5.5f
-                    if (m.k != 'V' && m.t % (120 - (3 - m.hp) * 20) == 0) { m.st = 1; m.stT = 30; m.dir = if (pcx > mcx) 1 else -1; Sfx.play(if (m.k == 'G') 260f else 180f, 0.25f, 2, 0.22f, 0.8f) }
+                    if (m.k != 'V' && m.t % (120 - (3 - m.hp) * 20) == 0) { m.st = 1; m.stT = 30; m.dir = if (pcx > mcx) 1 else -1; Sfx.fx(if (m.k == 'G') "honk" else "roar") }
                     if (m.k == 'A' && m.t % 150 == 75) shots.add(Shot(mcx, m.gy - 6, (if (pcx > mcx) 1 else -1) * (1.6f + (3 - m.hp) * 0.3f), 0f, 'm'))
                 }
                 1 -> { m.stT--; if (m.stT <= 0) { m.st = 2 } }       // telegraph (drawn shaking)
                 2 -> { // charge
                     m.x += m.dir * (2.8f + (3 - m.hp) * 0.4f)
                     if (m.t % 4 == 0) burst(if (m.dir > 0) m.x else m.x + m.w, m.gy - 2, "#d9c09a", 1)
-                    if (m.x < m.x0 + 4 || m.x + m.w > m.x1 - 4) { m.x = m.x.coerceIn(m.x0 + 4, m.x1 - 4 - m.w); m.st = 3; m.stT = 55; vib(30); burst(mcx, m.y, "#ffffff", 8); Sfx.play(110f, 0.2f, 2, 0.3f, 0.6f) }
+                    if (m.x < m.x0 + 4 || m.x + m.w > m.x1 - 4) { m.x = m.x.coerceIn(m.x0 + 4, m.x1 - 4 - m.w); m.st = 3; m.stT = 55; vib(30); burst(mcx, m.y, "#ffffff", 8); Sfx.fx("land") }
                 }
                 3 -> { m.stT--; if (m.stT <= 0) { m.st = 0; m.dir = if (pcx > mcx) 1 else -1 } }   // stunned / resting
             }
@@ -87,11 +87,11 @@ fun Game.updMini() {
             if (m.x < m.x0 + 4) { m.x = m.x0 + 4; m.dir = 1 }; if (m.x + m.w > m.x1 - 4) { m.x = m.x1 - 4 - m.w; m.dir = -1 }
             if (m.t % 140 == 0 && m.vy == 0f) m.vy = -6f
             val per = 90 - (3 - m.hp) * 18
-            if (m.t % per == 0) { val dx = pcx - mcx; shots.add(Shot(mcx, m.y + 4, (dx / 45f).coerceIn(-3f, 3f), -4.2f, 'j')); Sfx.play(700f, 0.06f, 1, 0.15f, 0.7f) }
+            if (m.t % per == 0) { val dx = pcx - mcx; shots.add(Shot(mcx, m.y + 4, (dx / 45f).coerceIn(-3f, 3f), -4.2f, 'j')); Sfx.fx("throw") }
         }
         'S' -> when (m.st) {
             0 -> { m.x += m.dir * 0.9f; if (m.x < m.x0 + 4) { m.x = m.x0 + 4; m.dir = 1 }; if (m.x + m.w > m.x1 - 4) { m.x = m.x1 - 4 - m.w; m.dir = -1 }
-                if (m.t % (100 - (3 - m.hp) * 15) == 0) { m.st = 1; m.stT = 25; m.dir = if (pcx > mcx) 1 else -1; Sfx.play(140f, 0.3f, 2, 0.22f, 0.7f) } }
+                if (m.t % (100 - (3 - m.hp) * 15) == 0) { m.st = 1; m.stT = 25; m.dir = if (pcx > mcx) 1 else -1; Sfx.fx("roar") } }
             1 -> { m.stT--; if (m.stT <= 0) { m.st = 2; m.vy = -5.8f; m.vx = m.dir * (2.2f + (3 - m.hp) * 0.3f) } }
             2 -> { m.x += m.vx; m.x = m.x.coerceIn(m.x0 + 4, m.x1 - 4 - m.w); if (m.vy == 0f && m.y >= m.gy - m.h - 0.5f) { m.st = 3; m.stT = 35; burst(mcx, m.gy, "#d9c09a", 8); vib(20) } }
             3 -> { m.stT--; if (m.stT <= 0) m.st = 0 }
@@ -101,13 +101,13 @@ fun Game.updMini() {
             if (m.x < m.x0 + 4) { m.x = m.x0 + 4; m.dir = 1 }; if (m.x + m.w > m.x1 - 4) { m.x = m.x1 - 4 - m.w; m.dir = -1 }
             val per = 80 - (3 - m.hp) * 15
             if (m.t % per == 0) { m.dir = if (pcx > mcx) 1 else -1; val dx = pcx - mcx
-                shots.add(Shot(if (m.dir > 0) m.x + m.w else m.x, m.y + 2, (dx / 40f).coerceIn(-3.5f, 3.5f), -3.6f, 's')); Sfx.play(240f, 0.15f, 2, 0.18f, 0.5f) }
+                shots.add(Shot(if (m.dir > 0) m.x + m.w else m.x, m.y + 2, (dx / 40f).coerceIn(-3.5f, 3.5f), -3.6f, 's')); Sfx.fx("throw") }
             if (m.hp == 1 && m.t % 60 == 30) shots.add(Shot(mcx, m.y + 2, -m.dir * 1.5f, -5f, 's'))
         }
         'P' -> when (m.st) {
             0 -> { m.tx = (m.x0 + m.x1) / 2 + sin(m.t / 50f) * ((m.x1 - m.x0) / 2 - 30); m.x += (m.tx - m.w / 2 - m.x) * 0.05f
                 m.y += (m.gy - 66 + sin(m.t / 20f) * 6 - m.y) * 0.08f
-                if (m.t % (150 - (3 - m.hp) * 25) == 0) { m.st = 1; m.stT = 24; Sfx.play(520f, 0.2f, 1, 0.2f, 0.6f) } }
+                if (m.t % (150 - (3 - m.hp) * 25) == 0) { m.st = 1; m.stT = 24; Sfx.fx("honk") } }
             1 -> { m.stT--; if (m.stT <= 0) { m.st = 2; m.tx = pcx; m.ty = p.y + p.h } }
             2 -> { val dx = m.tx - mcx; val dy = m.ty - (m.y + m.h); val d = sqrt(dx * dx + dy * dy).coerceAtLeast(1f); val sp = 3.2f + (3 - m.hp) * 0.4f
                 m.x += dx / d * sp; m.y += dy / d * sp; if (d < 6 || m.y + m.h >= m.gy - 2) { m.st = 3; m.stT = 40 } }
@@ -121,9 +121,9 @@ fun Game.updMini() {
     // contact
     if (ov(p.x, p.y, p.w, p.h, m.x, m.y, m.w, m.h) && m.inv == 0) {
         if (p.vy > 0 && p.y + p.h - p.vy <= m.y + 8) {
-            m.hp--; m.inv = 60; p.vy = -6.6f; Sfx.play(180f, 0.2f, 0, 0.3f, 0.5f); burst(mcx, m.y, "#f4c430", 14); vib(45)
+            m.hp--; m.inv = 60; p.vy = -6.6f; Sfx.fx("bosshit"); burst(mcx, m.y, "#f4c430", 14); vib(45)
             if (m.k != 'P' && m.k != 'S') { m.st = 3; m.stT = 40 }
-            if (m.hp <= 0) { m.dead = 1; Sfx.tune(intArrayOf(392, 494, 587, 784), 120, 1) }
+            if (m.hp <= 0) { m.dead = 1; Sfx.fx("win") }
         } else if (m.st != 3 || m.k == 'V' || m.k == 'P') hurt()
     }
 }
