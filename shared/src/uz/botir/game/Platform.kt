@@ -21,6 +21,11 @@ interface Gfx {
     fun cached(key: String, w: Int, h: Int, x: Float, y: Float, draw: () -> Unit)
     /** Forget cached pictures whose key starts with [prefix]. */
     fun dropCache(prefix: String)
+    /** Draws the region (sx,sy,sw,sh) of the picture fx/<name>.png at dx,dy, 1 px = 1 game unit, mirrored if [flip]. Skipped until loaded. */
+    fun image(name: String, sx: Int, sy: Int, sw: Int, sh: Int, dx: Float, dy: Float, flip: Boolean) {}
+    fun preload(names: Collection<String>) {}
+    /** Non-zero: following shapes are drawn in this one color (silhouettes for outlines). 0 turns it off. */
+    fun tint(c: Int) {}
 }
 
 /** Key-value persistence: SharedPreferences, or localStorage + Telegram CloudStorage. */

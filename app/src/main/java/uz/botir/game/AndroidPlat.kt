@@ -2,6 +2,11 @@ package uz.botir.game
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffColorFilter
+import android.graphics.Rect
+import android.content.res.AssetManager
 import android.graphics.Canvas
 import android.graphics.RectF
 import android.graphics.Paint
@@ -21,15 +26,18 @@ class AndroidGfx(private val font: Typeface) : Gfx {
     private val p = Paint().apply { isAntiAlias = false; isFilterBitmap = false; style = Paint.Style.FILL }
     private val tp = Paint().apply { isAntiAlias = false; isSubpixelText = false; typeface = font }
 
-    override fun rect(c: Int, x: Float, y: Float, w: Float, h: Float) { p.color = c; this.c.drawRect(x, y, x + w, y + h, p) }
-    override fun circle(c: Int, x: Float, y: Float, r: Float) { p.color = c; this.c.drawCircle(x, y, r, p) }
-    override fun arcTop(c: Int, x: Float, y: Float, r: Float) { p.color = c; this.c.drawArc(x - r, y - r, x + r, y + r, 180f, 180f, true, p) }
+    private var tintC = 0
+    private fun k(c: Int) = if (tintC != 0) tintC else c
+    override fun tint(c: Int) { tintC = c; bp.colorFilter = if (c != 0) PorterDuffColorFilter(c, PorterDuff.Mode.SRC_IN) else null }
+    override fun rect(c: Int, x: Float, y: Float, w: Float, h: Float) { p.color = k(c); this.c.drawRect(x, y, x + w, y + h, p) }
+    override fun circle(c: Int, x: Float, y: Float, r: Float) { p.color = k(c); this.c.drawCircle(x, y, r, p) }
+    override fun arcTop(c: Int, x: Float, y: Float, r: Float) { p.color = k(c); this.c.drawArc(x - r, y - r, x + r, y + r, 180f, 180f, true, p) }
     override fun ring(c: Int, x: Float, y: Float, r: Float, w: Float) {
-        p.color = c; p.style = Paint.Style.STROKE; p.strokeWidth = w; this.c.drawCircle(x, y, r, p); p.style = Paint.Style.FILL
+        p.color = k(c); p.style = Paint.Style.STROKE; p.strokeWidth = w; this.c.drawCircle(x, y, r, p); p.style = Paint.Style.FILL
     }
-    override fun line(c: Int, x0: Float, y0: Float, x1: Float, y1: Float, w: Float) { p.color = c; p.strokeWidth = w; this.c.drawLine(x0, y0, x1, y1, p) }
+    override fun line(c: Int, x0: Float, y0: Float, x1: Float, y1: Float, w: Float) { p.color = k(c); p.strokeWidth = w; this.c.drawLine(x0, y0, x1, y1, p) }
     override fun poly(c: Int, xs: FloatArray, ys: FloatArray) {
-        p.color = c; val path = Path(); path.moveTo(xs[0], ys[0]); for (i in 1 until xs.size) path.lineTo(xs[i], ys[i]); path.close(); this.c.drawPath(path, p)
+        p.color = k(c); val path = Path(); path.moveTo(xs[0], ys[0]); for (i in 1 until xs.size) path.lineTo(xs[i], ys[i]); path.close(); this.c.drawPath(path, p)
     }
     override fun text(s: String, x: Float, y: Float, c: Int, size: Float, align: Int) {
         tp.textSize = size; tp.color = c
@@ -56,6 +64,20 @@ class AndroidGfx(private val font: Typeface) : Gfx {
             pics[key] = bmp; bmp
         }
         dst.set(x, y, x + w, y + h); c.drawBitmap(b, null, dst, bp)
+    }
+    var assets: AssetManager? = null
+    private val imgs = HashMap<String, Bitmap?>()
+    private val sr = Rect()
+    private fun img(n: String): Bitmap? = imgs.getOrPut(n) {
+        try { assets?.open("fx/$n.png")?.use { BitmapFactory.decodeStream(it, null, BitmapFactory.Options().apply { inScaled = false }) } } catch (e: Exception) { null }
+    }
+    override fun preload(names: Collection<String>) { names.forEach { img(it) } }
+    override fun image(name: String, sx: Int, sy: Int, sw: Int, sh: Int, dx: Float, dy: Float, flip: Boolean) {
+        val b = img(name) ?: return
+        sr.set(sx, sy, sx + sw, sy + sh); dst.set(dx, dy, dx + sw, dy + sh)
+        if (flip) { c.save(); c.scale(-1f, 1f, dx + sw / 2f, 0f) }
+        c.drawBitmap(b, sr, dst, bp)
+        if (flip) c.restore()
     }
     override fun dropCache(prefix: String) {
         val it = pics.entries.iterator()
@@ -144,7 +166,7 @@ object AndroidPlatform {
     lateinit var gfx: AndroidGfx
     fun init(ctx: Context, font: Typeface) {
         if (::gfx.isInitialized) return
-        gfx = AndroidGfx(font)
+        gfx = AndroidGfx(font); gfx.assets = ctx.applicationContext.assets
         Plat.gfx = gfx
         Plat.store = AndroidStore(ctx.applicationContext)
         Plat.audio = AndroidAudio

@@ -229,6 +229,7 @@ object Menu {
                 txt(L("Пасхалки", "Sirlar") + " ${g.allEggs()}/${g.eggTotals.sum()}", W / 2f, y + 18, "#f4c430", SM, 1)
                 para(L("Спасибо, что играл! Найди все пасхалки и собери все звёзды.", "O'ynaganingiz uchun rahmat! Barcha sirlarni toping va barcha yulduzlarni yig'ing."), y + 34)
                 heroAt(g, g.skin(), 60f, 190f, 1f, if (g.frame % 30 < 15) "jump" else "idle")
+                txt("FX: pixelfx (MIT)", W / 2f, 262f, "#5c6690", SM, 1)
                 Spr.item("qozon", 88f, 204f); Spr.item("kafgir", 110f, 208f); Spr.item("lagan", 132f, 205f)
             }
             "endover" -> {

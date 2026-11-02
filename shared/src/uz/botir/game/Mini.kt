@@ -51,6 +51,7 @@ fun Game.updMini() {
     val m = mini ?: return; val p = pl
     if (m.dead > 0) {
         m.dead++
+        if (m.dead == 2) vfx("poof", m.x + m.w / 2, m.gy)
         if (m.dead == 30) {
             miniDone = true; Music.play(LV.song)
             for (i in 0 until 6) { val it = Item('n', m.x + m.w / 2 - 5, m.y); it.fall = true; it.vy = -3f - i * 0.4f; it.drift = (i - 2.5f) * 0.5f; items.add(it); total++ }
@@ -126,7 +127,7 @@ fun Game.updMini() {
     // contact
     if (ov(p.x, p.y, p.w, p.h, m.x, m.y, m.w, m.h) && m.inv == 0) {
         if (p.vy > 0 && p.y + p.h - p.vy <= m.y + 8) {
-            m.hp--; m.inv = 60; p.vy = -6.6f; Sfx.fx("bosshit"); burst(mcx, m.y, "#f4c430", 14); vib(45)
+            m.hp--; m.inv = 60; p.vy = -6.6f; Sfx.fx("bosshit"); vfx("bosshit", mcx, m.y + 20, pcx > mcx); vib(45)
             if (m.k != 'P' && m.k != 'S') { m.st = 3; m.stT = 40 }
             if (m.hp <= 0) { m.dead = 1; Sfx.fx("win") }
         } else if (m.st != 3 || m.k == 'V' || m.k == 'P') hurt()
@@ -145,7 +146,7 @@ fun Game.drawMini() {
     val face = if (m.k == 'P') (if (m.st == 2) sign(m.tx - (m.x + m.w / 2)).toInt().let { if (it == 0) 1 else it } else 1) else m.dir
     if (face < 0) { c.translate(m.w, 0f); c.scale(-1f, 1f) }
     val parts = Foes.mini(m.k, m.t, m.st)
-    G.drawParts(parts, 0f)
+    rim(Game.RIM_E, 0.85f) { G.drawParts(parts, 0f) }
     if (m.st == 3 && m.k != 'P' && m.k != 'K' && m.k != 'L') for (i in 0 until 3) { val a = frame / 6f + i * 2.1f; px("#f4c430", m.w / 2 + sin(a) * 8, -6 + kotlin.math.cos(a) * 2, 2, 2) }
     c.restore()
     val nm = MINI_NAMES[m.k] ?: arrayOf("БОСС", "BOSS")

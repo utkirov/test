@@ -31,3 +31,7 @@
 - `Tools.kt` — автотест и генерация скриншотов (только для CI)
 
 Шрифт Press Start 2P — SIL Open Font License.
+
+## Third-party
+Visual effects (coin/egg bursts, poof, hit sparks, respawn beam, confetti, splash) are sprite sheets exported from
+[pixelfx](https://github.com/patch-gg/pixelfx) — MIT License, © 2026 Patch, © 2026 Hugo Duprez. See `app/src/main/assets/fx/NOTICE.txt`.

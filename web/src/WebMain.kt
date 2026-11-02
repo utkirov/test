@@ -17,11 +17,14 @@ private fun tgAtLeast(v: String): Boolean = tg != null && (tg.isVersionAtLeast(v
 class WebGfx(var ctx: dynamic) : Gfx {
     private val css = HashMap<Int, String>()
     private val fonts = HashMap<Float, String>()
-    private fun c(v: Int): String = css.getOrPut(v) {
+    private fun c(v0: Int): String { val v = if (tintC != 0) tintC else v0; return css.getOrPut(v) { cs(v) } }
+    private fun cs(v: Int): String = run {
         val a = (v ushr 24) and 255; val r = (v shr 16) and 255; val g = (v shr 8) and 255; val b = v and 255
         if (a == 255) "rgb($r,$g,$b)" else "rgba($r,$g,$b,${a / 255.0})"
     }
     private fun font(size: Float) = fonts.getOrPut(size) { "${size}px 'Press Start 2P', monospace" }
+    private var tintC = 0
+    override fun tint(c: Int) { tintC = c }
     override fun rect(c: Int, x: Float, y: Float, w: Float, h: Float) { ctx.fillStyle = c(c); ctx.fillRect(x, y, w, h) }
     override fun circle(c: Int, x: Float, y: Float, r: Float) { ctx.fillStyle = c(c); ctx.beginPath(); ctx.arc(x, y, r, 0, 2 * PI); ctx.fill() }
     override fun arcTop(c: Int, x: Float, y: Float, r: Float) { ctx.fillStyle = c(c); ctx.beginPath(); ctx.moveTo(x, y); ctx.arc(x, y, r, PI, 2 * PI); ctx.closePath(); ctx.fill() }
@@ -56,6 +59,23 @@ class WebGfx(var ctx: dynamic) : Gfx {
         ctx.drawImage(pic, x, y, w, h)
     }
     override fun dropCache(prefix: String) { pics.keys.filter { it.startsWith(prefix) }.forEach { pics.remove(it) } }
+    private val imgs = HashMap<String, dynamic>()
+    private fun img(n: String): dynamic {
+        var i = imgs[n]
+        if (i == null) {
+            i = js("new Image()"); val inl: dynamic = window.BOTIR_FX
+            i.src = if (inl != null && inl[n] != null) inl[n] else "fx/$n.png"; imgs[n] = i
+        }
+        return i
+    }
+    override fun preload(names: Collection<String>) { names.forEach { img(it) } }
+    override fun image(name: String, sx: Int, sy: Int, sw: Int, sh: Int, dx: Float, dy: Float, flip: Boolean) {
+        if (tintC != 0) return
+        val i = img(name); if (!(i.complete as Boolean) || (i.naturalWidth as Int) == 0) return
+        ctx.imageSmoothingEnabled = false
+        if (flip) { ctx.save(); ctx.translate(dx * 2 + sw, 0); ctx.scale(-1, 1); ctx.drawImage(i, sx, sy, sw, sh, dx, dy, sw, sh); ctx.restore() }
+        else ctx.drawImage(i, sx, sy, sw, sh, dx, dy, sw, sh)
+    }
 }
 
 /** localStorage, mirrored to Telegram CloudStorage so progress follows the player between devices. */
